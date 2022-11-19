@@ -10,7 +10,7 @@ from pydefect.analyzer.defect_energy import DefectEnergyInfo
 from dephon.make_config_coord import make_ccd_init
 
 
-def make_cpp_init(args: Namespace):
+def make_ccd_init_and_dirs(args: Namespace):
     i_calc_results = loadfn(args.initial_dir / "calc_results.json")
     f_calc_results = loadfn(args.final_dir / "calc_results.json")
 
