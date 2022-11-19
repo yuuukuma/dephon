@@ -7,7 +7,7 @@ from pathlib import Path
 
 from pymatgen.io.vasp.inputs import UnknownPotcarWarning
 
-from dephon import __version__
+from dephon.version import __version__
 from dephon.cli.main_function import make_ccd_init_and_dirs
 
 warnings.simplefilter('ignore', UnknownPotcarWarning)
