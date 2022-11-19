@@ -1,0 +1,9 @@
+name: Va_O1
+charge: 1
+formation_energy: 2.4500653450000165
+atom_io:
+  O: -1
+energy_corrections:
+  pc term: 0.2784410946849063
+  alignment term: -0.03977616833604265
+is_shallow: False
