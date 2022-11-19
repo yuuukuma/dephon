@@ -6,6 +6,7 @@ from pathlib import Path
 
 from monty.serialization import loadfn
 from pydefect.analyzer.defect_energy import DefectEnergyInfo
+from vise.util.file_transfer import FileLink
 
 from dephon.make_config_coord import make_ccd_init
 
@@ -36,4 +37,10 @@ def make_ccd_init_and_dirs(args: Namespace):
             os.mkdir(dir_)
             imag_structure.structure.to(filename=str(dir_ / "POSCAR"))
 
-    return ccd_init
+        if Path(path / i / "0.0").is_dir() is False:
+            if i == "initial":
+                os.symlink(f"../../../{args.initial_dir}", path / i / "0.0")
+            if i == "final":
+                os.symlink(f"../../../{args.final_dir}", path / i / "0.0")
+    ccd_init.to_json_file(str(path / "ccd_init.json"))
+    print(ccd_init)
