@@ -31,7 +31,7 @@ def make_ccd_init(initial_calc_results: CalcResults,
     i_to_f_s = [ImageStructure(s, d) for s, d in zip(i_to_f, i_to_f_div_ratios)]
     f_to_i_s = [ImageStructure(s, d) for s, d in zip(f_to_i, f_to_i_div_ratios)]
 
-    return CcdInit("Va_O1",
+    return CcdInit(name=initial_defect_energy_info.name,
                    initial_structure=i_structure,
                    final_structure=f_structure,
                    initial_charge=initial_charge,
