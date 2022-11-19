@@ -25,8 +25,8 @@ def make_ccd_init_and_dirs(args: Namespace):
                              f_to_i_div_ratios=args.f_to_i_div_ratios)
 
     i_charge, f_charge = ccd_init.initial_charge, ccd_init.final_charge
-    path = Path(f"cc_{ccd_init.name}_{i_charge}_to_{f_charge}")
-    os.mkdir(path)
+    path = Path(f"cc/{ccd_init.name}_{i_charge}_to_{f_charge}")
+    path.mkdir(parents=True)
 
     for i, imag_structures in [("initial", ccd_init.i_to_f_image_structures),
                                ("final", ccd_init.f_to_i_image_structures)]:
