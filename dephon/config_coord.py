@@ -19,41 +19,42 @@ class ImageStructure(MSONable):
 @dataclass
 class CcdInit(MSONable, ToJsonFileMixIn):
     name: str
-    initial_structure: Structure  # initial excited structure
-    final_structure: Structure  # final ground structure
-    initial_charge: int
-    final_charge: int
-    initial_energy: DefectEnergy
-    final_energy: DefectEnergy
-    i_to_f_image_structures: List[ImageStructure]
-    f_to_i_image_structures: List[ImageStructure]
+    excited_structure: Structure  # excited excited structure
+    ground_structure: Structure  # final ground structure
+    excited_charge: int
+    ground_charge: int
+    excited_energy: DefectEnergy
+    ground_energy: DefectEnergy
+    e_to_g_image_structures: List[ImageStructure]
+    g_to_e_image_structures: List[ImageStructure]
 
     @property
     def dQ(self):
-        return get_dQ(self.initial_structure, self.final_structure)
+        return get_dQ(self.excited_structure, self.ground_structure)
 
     def __str__(self):
-        charge_diff = self.final_charge - self.initial_charge
+        charge_diff = self.ground_charge - self.excited_charge
         if charge_diff == -1:
             trapped_carrier = "e-"
         elif charge_diff == 1:
             trapped_carrier = "h+"
         else:
-            raise ValueError("The charge difference between initial and final "
+            raise ValueError("The charge difference between excited and ground "
                              "states is neither 1 nor -1")
 
-        initial = f"{self.name}_{self.initial_charge} + {trapped_carrier}"
-        final = f"{self.name}_{self.final_charge}"
+        excited = f"{self.name}_{self.excited_charge} + {trapped_carrier}"
+        ground = f"{self.name}_{self.ground_charge}"
 
         return f"""Name: {self.name}
-transition: {initial} -> {final}"""
+transition: {excited} -> {ground},
+"""
 
 
 @dataclass
 class Ccd(MSONable):
     name: str
     dQs: List[float]
-    initial_energies: List[float]
-    final_energies: List[float]
+    excited_energies: List[float]
+    ground_energies: List[float]
 
 

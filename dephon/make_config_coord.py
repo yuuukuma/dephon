@@ -8,35 +8,35 @@ from pydefect.analyzer.defect_energy import DefectEnergyInfo
 from dephon.config_coord import CcdInit, ImageStructure
 
 
-def make_ccd_init(initial_calc_results: CalcResults,
-                  final_calc_results: CalcResults,
-                  initial_defect_energy_info: DefectEnergyInfo,
-                  final_defect_energy_info: DefectEnergyInfo,
-                  i_to_f_div_ratios: List[float],
-                  f_to_i_div_ratios: List[float]) -> CcdInit:
-    initial_charge = initial_defect_energy_info.charge
-    final_charge = final_defect_energy_info.charge
+def make_ccd_init(excited_calc_results: CalcResults,
+                  ground_calc_results: CalcResults,
+                  excited_defect_energy_info: DefectEnergyInfo,
+                  ground_defect_energy_info: DefectEnergyInfo,
+                  e_to_g_div_ratios: List[float],
+                  g_to_e_div_ratios: List[float]) -> CcdInit:
+    excited_charge = excited_defect_energy_info.charge
+    ground_charge = ground_defect_energy_info.charge
 
-    assert abs(initial_charge - final_charge) == 1
-    assert initial_defect_energy_info.name == final_defect_energy_info.name
-    assert (initial_defect_energy_info.atom_io
-            == final_defect_energy_info.atom_io)
+    assert abs(excited_charge - ground_charge) == 1
+    assert excited_defect_energy_info.name == ground_defect_energy_info.name
+    assert (excited_defect_energy_info.atom_io
+            == ground_defect_energy_info.atom_io)
 
-    i_structure = initial_calc_results.structure
-    f_structure = final_calc_results.structure
+    e_structure = excited_calc_results.structure
+    g_structure = ground_calc_results.structure
 
-    i_to_f = i_structure.interpolate(f_structure, nimages=i_to_f_div_ratios)
-    f_to_i = f_structure.interpolate(i_structure, nimages=f_to_i_div_ratios)
+    e_to_g = e_structure.interpolate(g_structure, nimages=e_to_g_div_ratios)
+    g_to_e = g_structure.interpolate(e_structure, nimages=g_to_e_div_ratios)
 
-    i_to_f_s = [ImageStructure(s, d) for s, d in zip(i_to_f, i_to_f_div_ratios)]
-    f_to_i_s = [ImageStructure(s, d) for s, d in zip(f_to_i, f_to_i_div_ratios)]
+    e_to_g_s = [ImageStructure(s, d) for s, d in zip(e_to_g, e_to_g_div_ratios)]
+    g_to_e_s = [ImageStructure(s, d) for s, d in zip(g_to_e, g_to_e_div_ratios)]
 
-    return CcdInit(name=initial_defect_energy_info.name,
-                   initial_structure=i_structure,
-                   final_structure=f_structure,
-                   initial_charge=initial_charge,
-                   final_charge=final_charge,
-                   initial_energy=initial_defect_energy_info.defect_energy,
-                   final_energy=final_defect_energy_info.defect_energy,
-                   i_to_f_image_structures=i_to_f_s,
-                   f_to_i_image_structures=f_to_i_s)
+    return CcdInit(name=excited_defect_energy_info.name,
+                   excited_structure=e_structure,
+                   ground_structure=g_structure,
+                   excited_charge=excited_charge,
+                   ground_charge=ground_charge,
+                   excited_energy=excited_defect_energy_info.defect_energy,
+                   ground_energy=ground_defect_energy_info.defect_energy,
+                   e_to_g_image_structures=e_to_g_s,
+                   g_to_e_image_structures=g_to_e_s)
