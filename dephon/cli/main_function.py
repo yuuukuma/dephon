@@ -4,8 +4,10 @@ from argparse import Namespace
 from glob import glob
 from pathlib import Path
 
+import yaml
 from monty.serialization import loadfn
 from pydefect.analyzer.calc_results import CalcResults
+from vise.input_set.prior_info import PriorInfo
 from vise.util.logger import get_logger
 
 from dephon.config_coord import ImageStructureInfo, Ccd, ccd_plt
@@ -47,12 +49,16 @@ def _make_ccd_dirs(args, ccd_init, path: Path):
     for i, ratios, ss in [("excited", args.e_to_g_div_ratios, e_to_g),
                           ("ground", args.g_to_e_div_ratios, g_to_e)]:
         (path / i).mkdir(parents=True, exist_ok=True)
+        c = ccd_init.ground_charge if i == "ground" else ccd_init.excited_charge
+
         for ratio, s in zip(ratios, ss):
 
             dir_ = path / i / f"disp_{ratio}"
             try:
                 dir_.mkdir()
                 s.to(filename=str(dir_ / "POSCAR"))
+                (dir_ / "prior_info.yaml").write_text(
+                    yaml.dump({"charge": c}), None)
             except FileExistsError:
                 logger.info(f"Directory {dir_} exists, so skip it.")
 

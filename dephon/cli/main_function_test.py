@@ -9,6 +9,7 @@ from monty.serialization import loadfn
 from pydefect.analyzer.calc_results import CalcResults
 from pydefect.analyzer.defect_energy import DefectEnergy
 from pymatgen.core import Structure
+from vise.input_set.prior_info import PriorInfo
 
 from dephon.cli.main_function import make_ccd_init_and_dirs, make_ccd, \
     add_ccd_dirs
@@ -38,14 +39,22 @@ def test_add_ccd_dirs(tmpdir, mocker, ground_structure, excited_structure,
     ccd_init = mocker.Mock(spec=CcdInit, autospec=True)
     ccd_init.excited_structure = excited_structure
     ccd_init.ground_structure = ground_structure
+
+    ccd_init.excited_charge = -1
+    ccd_init.ground_charge = 0
+
     args = Namespace(ccd_init=ccd_init,
                      e_to_g_div_ratios=[0.5, 1.0],
                      g_to_e_div_ratios=[1.0],
                      calc_dir=Path("test"))
     add_ccd_dirs(args)
-
-    actual = Structure.from_file(Path("test/excited") / "disp_0.5" / "POSCAR")
+    excited_5 = Path("test/excited") / "disp_0.5"
+    actual = Structure.from_file(excited_5 / "POSCAR")
     assert actual == intermediate_structure
+
+    actual = PriorInfo.load_yaml(excited_5 / "prior_info.yaml")
+    expected = PriorInfo(charge=-1)
+    assert actual == expected
 
     actual = Structure.from_file(Path("test/ground") / "disp_1.0" / "POSCAR")
     assert actual == excited_structure
@@ -53,9 +62,7 @@ def test_add_ccd_dirs(tmpdir, mocker, ground_structure, excited_structure,
 
 """
 TODO:    
-- Allow to specify calc_dir
 - Add charge to prior_info.json
-- Skip to make directories with warning when the directories exist.
 """
 
 
