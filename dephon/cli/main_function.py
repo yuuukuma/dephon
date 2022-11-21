@@ -9,24 +9,26 @@ from monty.serialization import loadfn
 from pydefect.analyzer.calc_results import CalcResults
 from pydefect.analyzer.defect_energy import DefectEnergyInfo
 
-from dephon.config_coord import ImageStructureInfo, Ccd
+from dephon.config_coord import ImageStructureInfo, Ccd, ccd_plt
 from dephon.make_config_coord import make_ccd_init
 
 
 def make_ccd_init_and_dirs(args: Namespace):
-    i_calc_results = loadfn(args.excited_dir / "calc_results.json")
-    f_calc_results = loadfn(args.ground_dir / "calc_results.json")
+    name_e = "_".join(args.excited_dir.name.split("_")[:-1])
+    name_g = "_".join(args.ground_dir.name.split("_")[:-1])
+    assert name_e == name_g
 
-    i_defect_energy_info = DefectEnergyInfo.from_yaml(
-        args.excited_dir / "defect_energy_info.yaml")
-    f_defect_energy_info = DefectEnergyInfo.from_yaml(
-        args.ground_dir / "defect_energy_info.yaml")
+    e_calc_results = loadfn(args.excited_dir / "calc_results.json")
+    g_calc_results = loadfn(args.ground_dir / "calc_results.json")
 
-    ccd_init = make_ccd_init(i_calc_results, f_calc_results,
-                             i_defect_energy_info, f_defect_energy_info)
+    e_correction = loadfn(args.excited_dir / "correction.json")
+    g_correction = loadfn(args.ground_dir / "correction.json")
 
-    i_charge, f_charge = ccd_init.excited_charge, ccd_init.ground_charge
-    path = Path(f"cc/{ccd_init.name}_{i_charge}to{f_charge}")
+    ccd_init = make_ccd_init(name_e, e_calc_results, g_calc_results,
+                             e_correction, g_correction)
+
+    e_charge, g_charge = ccd_init.excited_charge, ccd_init.ground_charge
+    path = Path(f"cc/{ccd_init.name}_{e_charge}to{g_charge}")
     path.mkdir(parents=True)
 
     gs, es = ccd_init.ground_structure, ccd_init.excited_structure
@@ -72,3 +74,6 @@ def make_ccd(args: Namespace):
     ccd = Ccd(args.ccd_init.dQ, excited_image_infos, ground_image_infos,
               correction="constant FNV")
     ccd.to_json_file()
+    plt = ccd_plt(ccd)
+    plt.show()
+    plt.savefig("CCD.pdf")

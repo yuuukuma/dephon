@@ -33,3 +33,12 @@ def test_main_make_ccd_init_and_dirs_w_args():
         func=parsed_args.func)
     assert parsed_args == expected
 
+
+# def test_main_make_ccd():
+#     parsed_args = parse_args_main(["c", "--ccd_init"])
+#     expected = Namespace(
+#         ccd_init=,
+#         func=parsed_args.func)
+#     assert parsed_args == expected
+
+

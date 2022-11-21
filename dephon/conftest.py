@@ -76,8 +76,10 @@ def ccd_init(excited_structure, ground_structure, intermediate_structure):
         ground_structure=ground_structure,
         excited_charge=0,
         ground_charge=-1,
-        excited_energy=DefectEnergy(-1.0, {"test": -1.0}),
-        ground_energy=DefectEnergy(-2.0, {"test": -2.0}))
+        excited_energy=-1.0,
+        excited_energy_correction=-1.0,
+        ground_energy=-2.0,
+        ground_energy_correction=-2.0)
 
 
 @pytest.fixture
