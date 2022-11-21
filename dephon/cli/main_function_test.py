@@ -43,9 +43,7 @@ def test_make_ccd(tmpdir, mocker, ground_structure):
     ccd_init.excited_energy = DefectEnergy(10.0, {"corr_1": -1.0})
     ccd_init.ground_energy = DefectEnergy(20.0, {"corr_1": -2.0})
 
-    args = Namespace(ccd_init=ccd_init,
-                     excited_dirs=[Path(f"excited/disp_{d}") for d in dirs],
-                     ground_dirs=[Path(f"ground/disp_{d}") for d in dirs])
+    args = Namespace(ccd_init=ccd_init)
     make_ccd(args)
     actual: Ccd = loadfn("ccd.json")
     expected = Ccd(dQ=10.0,
@@ -56,7 +54,7 @@ def test_make_ccd(tmpdir, mocker, ground_structure):
                                        ImageStructureInfo(0.0, 18.0),
                                        ImageStructureInfo(0.2, -1.8)],
                    correction="constant FNV")
-    assert  actual == expected
+    assert actual == expected
 
 
 """

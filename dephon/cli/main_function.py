@@ -2,6 +2,7 @@
 #  Copyright (c) 2022 Kumagai group.
 import os
 from argparse import Namespace
+from glob import glob
 from pathlib import Path
 
 from monty.serialization import loadfn
@@ -45,25 +46,25 @@ def make_ccd_init_and_dirs(args: Namespace):
     print(ccd_init)
 
 
-def _make_image_info(relaxed_structure_energy, dirs):
-    image_infos = [ImageStructureInfo(0.0, energy=relaxed_structure_energy)]
-    for d in dirs:
-        disp_ratio = float(str(d.name).split("_")[-1])
-        cr: CalcResults = loadfn(d / "calc_results.json")
-        image_infos.append(ImageStructureInfo(disp_ratio, cr.energy))
-    image_infos.sort(key=lambda x: x.displace_ratio)
-    return image_infos
+def _make_image_info(relaxed_structure_energy, dir_name):
+    result = [ImageStructureInfo(0.0, energy=relaxed_structure_energy)]
+    for d in glob(f'{dir_name}/disp_*'):
+        disp_ratio = float(d.split("_")[-1])
+        cr: CalcResults = loadfn(Path(d) / "calc_results.json")
+        result.append(ImageStructureInfo(disp_ratio, cr.energy))
+    result.sort(key=lambda x: x.displace_ratio)
+    return result
 
 
 def make_ccd(args: Namespace):
     g_energy = args.ccd_init.ground_energy.energy(False)
-    ground_image_infos = _make_image_info(g_energy, args.ground_dirs)
+    ground_image_infos = _make_image_info(g_energy, "ground")
     ground_correction = args.ccd_init.ground_energy.total_correction
     for i in ground_image_infos:
         i.energy += ground_correction
 
     e_energy = args.ccd_init.excited_energy.energy(False)
-    excited_image_infos = _make_image_info(e_energy, args.excited_dirs)
+    excited_image_infos = _make_image_info(e_energy, "excited")
     excited_correction = args.ccd_init.excited_energy.total_correction
     for i in excited_image_infos:
         i.energy += excited_correction
