@@ -18,12 +18,10 @@ def test_ccd_dQ(ccd_init):
 
 def test_ccd_string(ccd_init):
     actual = ccd_init.__str__()
-    expected = """Name:                      Va_O
-Excited state:             Va_O_0 + e-  energy:  -1  total correction:  -1  is shallow:
-Excited to ground ratios:  [0.5]
+    expected = """Name:           Va_O
+Excited state:  Va_O_0 + e-  energy:  -1  total correction:  -1  is shallow:
 
-Ground state:              Va_O_-1      energy:  -2  total correction:  -2  is shallow:
-Ground to excited ratios:  [0.5]"""
+Ground state:   Va_O_-1      energy:  -2  total correction:  -2  is shallow:"""
     assert actual == expected
 
 

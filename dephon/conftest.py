@@ -6,7 +6,7 @@ import pytest
 from pydefect.analyzer.defect_energy import DefectEnergy
 from pymatgen.core import Structure
 
-from dephon.config_coord import ImageStructure, CcdInit
+from dephon.config_coord import ImageStructureInfo, CcdInit
 
 
 @pytest.fixture(scope="session")
@@ -77,6 +77,4 @@ def ccd_init(excited_structure, ground_structure, intermediate_structure):
         excited_charge=0,
         ground_charge=-1,
         excited_energy=DefectEnergy(-1.0, {"test": -1.0}),
-        ground_energy=DefectEnergy(-2.0, {"test": -2.0}),
-        e_to_g_image_structures=[ImageStructure(intermediate_structure, 0.5)],
-        g_to_e_image_structures=[ImageStructure(intermediate_structure, 0.5)])
+        ground_energy=DefectEnergy(-2.0, {"test": -2.0}))

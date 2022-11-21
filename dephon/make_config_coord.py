@@ -5,7 +5,7 @@ from typing import List
 from pydefect.analyzer.calc_results import CalcResults
 from pydefect.analyzer.defect_energy import DefectEnergyInfo
 
-from dephon.config_coord import CcdInit, ImageStructure
+from dephon.config_coord import CcdInit, ImageStructureInfo
 
 
 def make_ccd_init(excited_calc_results: CalcResults,
@@ -28,8 +28,8 @@ def make_ccd_init(excited_calc_results: CalcResults,
     e_to_g = e_structure.interpolate(g_structure, nimages=e_to_g_div_ratios)
     g_to_e = g_structure.interpolate(e_structure, nimages=g_to_e_div_ratios)
 
-    e_to_g_s = [ImageStructure(s, d) for s, d in zip(e_to_g, e_to_g_div_ratios)]
-    g_to_e_s = [ImageStructure(s, d) for s, d in zip(g_to_e, g_to_e_div_ratios)]
+    e_to_g_s = [ImageStructureInfo(s, d) for s, d in zip(e_to_g, e_to_g_div_ratios)]
+    g_to_e_s = [ImageStructureInfo(s, d) for s, d in zip(g_to_e, g_to_e_div_ratios)]
 
     return CcdInit(name=excited_defect_energy_info.name,
                    excited_structure=e_structure,

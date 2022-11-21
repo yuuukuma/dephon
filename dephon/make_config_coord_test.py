@@ -4,7 +4,7 @@
 from pydefect.analyzer.calc_results import CalcResults
 from pydefect.analyzer.defect_energy import DefectEnergy, DefectEnergyInfo
 
-from dephon.config_coord import CcdInit, ImageStructure
+from dephon.config_coord import CcdInit, ImageStructureInfo
 from dephon.make_config_coord import make_ccd_init
 
 
@@ -37,7 +37,7 @@ def test_make_cc_init(
                        excited_energy=excited_energy,
                        ground_energy=ground_energy,
                        e_to_g_image_structures=
-                       [ImageStructure(intermediate_structure, 0.5)],
+                       [ImageStructureInfo(intermediate_structure, 0.5)],
                        g_to_e_image_structures=
-                       [ImageStructure(intermediate_structure, 0.5)])
+                       [ImageStructureInfo(intermediate_structure, 0.5)])
     assert actual == expected

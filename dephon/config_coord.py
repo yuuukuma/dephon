@@ -12,12 +12,6 @@ from vise.util.mix_in import ToJsonFileMixIn
 
 
 @dataclass
-class ImageStructure(MSONable):
-    structure: Structure
-    displace_ratio: float  # 0.0: original, 1.0: counter structure
-
-
-@dataclass
 class CcdInit(MSONable, ToJsonFileMixIn):
     name: str
     excited_structure: Structure  # excited excited structure
@@ -26,20 +20,10 @@ class CcdInit(MSONable, ToJsonFileMixIn):
     ground_charge: int
     excited_energy: DefectEnergy
     ground_energy: DefectEnergy
-    e_to_g_image_structures: List[ImageStructure]
-    g_to_e_image_structures: List[ImageStructure]
 
     @property
     def dQ(self):
         return get_dQ(self.excited_structure, self.ground_structure)
-
-    @property
-    def e_to_g_image_ratios(self):
-        return [i_s.displace_ratio for i_s in self.e_to_g_image_structures]
-
-    @property
-    def g_to_e_image_ratios(self):
-        return [i_s.displace_ratio for i_s in self.g_to_e_image_structures]
 
     def __str__(self):
         result = [["Name:", self.name]]
@@ -57,8 +41,6 @@ class CcdInit(MSONable, ToJsonFileMixIn):
                        "energy:", self.excited_energy.formation_energy,
                        "total correction:", self.excited_energy.total_correction,
                        "is shallow:", self.excited_energy.is_shallow])
-        result.append(["Excited to ground ratios:",
-                       self.e_to_g_image_ratios])
 
         result.append([])
 
@@ -67,8 +49,6 @@ class CcdInit(MSONable, ToJsonFileMixIn):
                        "energy:", self.ground_energy.formation_energy,
                        "total correction:", self.ground_energy.total_correction,
                        "is shallow:", self.ground_energy.is_shallow])
-        result.append(["Ground to excited ratios:",
-                       self.g_to_e_image_ratios])
 
         return tabulate(result, tablefmt="plain")
 
