@@ -40,8 +40,10 @@ def test_make_ccd(tmpdir, mocker, ground_structure):
 
     ccd_init = mocker.Mock(spec=CcdInit, autospec=True)
     ccd_init.dQ = 10.0
-    ccd_init.excited_energy = DefectEnergy(10.0, {"corr_1": -1.0})
-    ccd_init.ground_energy = DefectEnergy(20.0, {"corr_1": -2.0})
+    ccd_init.excited_energy = 10.0
+    ccd_init.ground_energy = 20.0
+    ccd_init.excited_energy_correction = -1.0
+    ccd_init.ground_energy_correction = -2.0
 
     args = Namespace(ccd_init=ccd_init)
     make_ccd(args)

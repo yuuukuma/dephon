@@ -7,7 +7,7 @@ from pathlib import Path
 
 from monty.serialization import loadfn
 from pydefect.analyzer.calc_results import CalcResults
-from pydefect.analyzer.defect_energy import DefectEnergyInfo
+from pymatgen.core import Structure
 
 from dephon.config_coord import ImageStructureInfo, Ccd, ccd_plt
 from dephon.make_config_coord import make_ccd_init
@@ -59,15 +59,15 @@ def _make_image_info(relaxed_structure_energy, dir_name):
 
 
 def make_ccd(args: Namespace):
-    g_energy = args.ccd_init.ground_energy.energy(False)
+    g_energy = args.ccd_init.ground_energy
     ground_image_infos = _make_image_info(g_energy, "ground")
-    ground_correction = args.ccd_init.ground_energy.total_correction
+    ground_correction = args.ccd_init.ground_energy_correction
     for i in ground_image_infos:
         i.energy += ground_correction
 
-    e_energy = args.ccd_init.excited_energy.energy(False)
+    e_energy = args.ccd_init.excited_energy
     excited_image_infos = _make_image_info(e_energy, "excited")
-    excited_correction = args.ccd_init.excited_energy.total_correction
+    excited_correction = args.ccd_init.excited_energy_correction
     for i in excited_image_infos:
         i.energy += excited_correction
 
