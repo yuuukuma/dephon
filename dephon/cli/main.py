@@ -33,7 +33,7 @@ def parse_args_main(args):
 
     parser_make_ccd_init.add_argument(
         "-ed", "--excited_dir", type=Path, required=True,
-        help="Directory for an excited excited state defect.")
+        help="Directory for an excited state defect.")
     parser_make_ccd_init.add_argument(
         "-gd", "--ground_dir", type=Path, required=True,
         help="Directory for a ground state defect.")
