@@ -5,10 +5,11 @@ import sys
 import warnings
 from pathlib import Path
 
+from monty.serialization import loadfn
 from pymatgen.io.vasp.inputs import UnknownPotcarWarning
 
 from dephon.version import __version__
-from dephon.cli.main_function import make_ccd_init_and_dirs
+from dephon.cli.main_function import make_ccd_init_and_dirs, make_ccd
 
 warnings.simplefilter('ignore', UnknownPotcarWarning)
 
@@ -47,6 +48,18 @@ def parse_args_main(args):
         help="Dividing ratios from ground state to excited state structures.")
     parser_make_ccd_init.set_defaults(
         func=make_ccd_init_and_dirs)
+    # -- make_ccd -----------------------------------
+    parser_make_ccd = subparsers.add_parser(
+        name="make_ccd",
+        description="",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+        aliases=['c'])
+
+    parser_make_ccd.add_argument(
+        "--ccd_init", type=loadfn,
+        default="ccd_init.json")
+    parser_make_ccd.set_defaults(
+        func=make_ccd)
     # ------------------------------------------------------------------------
     return parser.parse_args(args)
 
