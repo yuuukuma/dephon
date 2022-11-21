@@ -86,3 +86,10 @@ def ccd(excited_structure, ground_structure, intermediate_structure):
         dQ=1.0,
         excited_image_infos=[ImageStructureInfo(0.1, -3.0)],
         ground_image_infos=[ImageStructureInfo(0.2, -4.0)])
+
+
+@pytest.fixture(scope="session")
+def sc_structure():
+    lattice = Lattice.cubic(1.0)
+    coords = [[0.0, 0.0, 0.0]]
+    return Structure(lattice=lattice, species=["H"], coords=coords)

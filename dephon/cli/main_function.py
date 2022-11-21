@@ -5,8 +5,10 @@ from argparse import Namespace
 from pathlib import Path
 
 from monty.serialization import loadfn
+from pydefect.analyzer.calc_results import CalcResults
 from pydefect.analyzer.defect_energy import DefectEnergyInfo
 
+from dephon.config_coord import ImageStructureInfo, Ccd
 from dephon.make_config_coord import make_ccd_init
 
 
@@ -39,10 +41,33 @@ def make_ccd_init_and_dirs(args: Namespace):
             os.mkdir(dir_)
             s.to(filename=str(dir_ / "POSCAR"))
 
-        if Path(path / i / "disp_0.0").is_dir() is False:
-            if i == "excited":
-                os.symlink(f"../../../{args.excited_dir}", path / i / "disp_0.0")
-            if i == "ground":
-                os.symlink(f"../../../{args.ground_dir}", path / i / "disp_0.0")
     ccd_init.to_json_file(str(path / "ccd_init.json"))
     print(ccd_init)
+
+
+def _make_image_info(relaxed_structure_energy, dirs):
+    image_infos = [ImageStructureInfo(0.0, energy=relaxed_structure_energy)]
+    for d in dirs:
+        disp_ratio = float(str(d.name).split("_")[-1])
+        cr: CalcResults = loadfn(d / "calc_results.json")
+        image_infos.append(ImageStructureInfo(disp_ratio, cr.energy))
+    image_infos.sort(key=lambda x: x.displace_ratio)
+    return image_infos
+
+
+def make_ccd(args: Namespace):
+    g_energy = args.ccd_init.ground_energy.energy(False)
+    ground_image_infos = _make_image_info(g_energy, args.ground_dirs)
+    ground_correction = args.ccd_init.ground_energy.total_correction
+    for i in ground_image_infos:
+        i.energy += ground_correction
+
+    e_energy = args.ccd_init.excited_energy.energy(False)
+    excited_image_infos = _make_image_info(e_energy, args.excited_dirs)
+    excited_correction = args.ccd_init.excited_energy.total_correction
+    for i in excited_image_infos:
+        i.energy += excited_correction
+
+    ccd = Ccd(args.ccd_init.dQ, excited_image_infos, ground_image_infos,
+              correction="constant FNV")
+    ccd.to_json_file()
