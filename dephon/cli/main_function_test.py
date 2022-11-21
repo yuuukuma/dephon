@@ -8,8 +8,10 @@ from pathlib import Path
 from monty.serialization import loadfn
 from pydefect.analyzer.calc_results import CalcResults
 from pydefect.analyzer.defect_energy import DefectEnergy
+from pymatgen.core import Structure
 
-from dephon.cli.main_function import make_ccd_init_and_dirs, make_ccd
+from dephon.cli.main_function import make_ccd_init_and_dirs, make_ccd, \
+    add_ccd_dirs
 from dephon.config_coord import Ccd, CcdInit, ImageStructureInfo
 
 
@@ -24,6 +26,37 @@ def test_make_ccd_init_and_dirs(test_files, tmpdir):
                      e_to_g_div_ratios=[0.1, 0.2],
                      g_to_e_div_ratios=[0.3, 0.4])
     make_ccd_init_and_dirs(args)
+
+
+def test_add_ccd_dirs(tmpdir, mocker, ground_structure, excited_structure,
+                      intermediate_structure):
+    print(tmpdir)
+    tmpdir.chdir()
+
+    Path("test/excited/disp_1.0").mkdir(parents=True)
+
+    ccd_init = mocker.Mock(spec=CcdInit, autospec=True)
+    ccd_init.excited_structure = excited_structure
+    ccd_init.ground_structure = ground_structure
+    args = Namespace(ccd_init=ccd_init,
+                     e_to_g_div_ratios=[0.5, 1.0],
+                     g_to_e_div_ratios=[1.0],
+                     calc_dir=Path("test"))
+    add_ccd_dirs(args)
+
+    actual = Structure.from_file(Path("test/excited") / "disp_0.5" / "POSCAR")
+    assert actual == intermediate_structure
+
+    actual = Structure.from_file(Path("test/ground") / "disp_1.0" / "POSCAR")
+    assert actual == excited_structure
+
+
+"""
+TODO:    
+- Allow to specify calc_dir
+- Add charge to prior_info.json
+- Skip to make directories with warning when the directories exist.
+"""
 
 
 def test_make_ccd(tmpdir, mocker, ground_structure):

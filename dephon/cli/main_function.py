@@ -1,16 +1,18 @@
 # -*- coding: utf-8 -*-
 #  Copyright (c) 2022 Kumagai group.
-import os
 from argparse import Namespace
 from glob import glob
 from pathlib import Path
 
 from monty.serialization import loadfn
 from pydefect.analyzer.calc_results import CalcResults
-from pymatgen.core import Structure
+from vise.util.logger import get_logger
 
 from dephon.config_coord import ImageStructureInfo, Ccd, ccd_plt
 from dephon.make_config_coord import make_ccd_init
+
+
+logger = get_logger(__name__)
 
 
 def make_ccd_init_and_dirs(args: Namespace):
@@ -31,21 +33,32 @@ def make_ccd_init_and_dirs(args: Namespace):
     path = Path(f"cc/{ccd_init.name}_{e_charge}to{g_charge}")
     path.mkdir(parents=True)
 
-    gs, es = ccd_init.ground_structure, ccd_init.excited_structure
-
-    e_to_g = es.interpolate(gs, nimages=args.g_to_e_div_ratios)
-    g_to_e = gs.interpolate(es, nimages=args.e_to_g_div_ratios)
-
-    for i, ratios, ss in [("excited", args.e_to_g_div_ratios, e_to_g),
-                          ("ground", args.e_to_g_div_ratios, g_to_e)]:
-        os.mkdir(path / i)
-        for ratio, s in zip(ratios, ss):
-            dir_ = path / i / f"disp_{ratio}"
-            os.mkdir(dir_)
-            s.to(filename=str(dir_ / "POSCAR"))
-
     ccd_init.to_json_file(str(path / "ccd_init.json"))
     print(ccd_init)
+
+    _make_ccd_dirs(args, ccd_init, path)
+
+
+def _make_ccd_dirs(args, ccd_init, path: Path):
+    gs, es = ccd_init.ground_structure, ccd_init.excited_structure
+    e_to_g = es.interpolate(gs, nimages=args.e_to_g_div_ratios)
+    g_to_e = gs.interpolate(es, nimages=args.g_to_e_div_ratios)
+
+    for i, ratios, ss in [("excited", args.e_to_g_div_ratios, e_to_g),
+                          ("ground", args.g_to_e_div_ratios, g_to_e)]:
+        (path / i).mkdir(parents=True, exist_ok=True)
+        for ratio, s in zip(ratios, ss):
+
+            dir_ = path / i / f"disp_{ratio}"
+            try:
+                dir_.mkdir()
+                s.to(filename=str(dir_ / "POSCAR"))
+            except FileExistsError:
+                logger.info(f"Directory {dir_} exists, so skip it.")
+
+
+def add_ccd_dirs(args: Namespace):
+    _make_ccd_dirs(args, args.ccd_init, args.calc_dir)
 
 
 def _make_image_info(relaxed_structure_energy, dir_name):
