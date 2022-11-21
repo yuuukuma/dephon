@@ -54,14 +54,17 @@ class CcdInit(MSONable, ToJsonFileMixIn):
 @dataclass
 class ImageStructureInfo(MSONable):
     displace_ratio: float  # 0.0: original, 1.0: counter structure
-    energy: float
+    energy: float  # include the corrections
 
 
 @dataclass
 class Ccd(MSONable, ToJsonFileMixIn):
-    name: str
     dQ: float
-    excited_image_structures: List[ImageStructureInfo]
-    ground_image_structures: List[ImageStructureInfo]
-
+    excited_image_infos: List[ImageStructureInfo]
+    ground_image_infos: List[ImageStructureInfo]
+    correction: str = None
+    # result.append(["Excited to ground ratios:",
+    #                self.e_to_g_image_ratios])
+    # result.append(["Ground to excited ratios:",
+    #                self.g_to_e_image_ratios])
 
