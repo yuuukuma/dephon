@@ -4,12 +4,12 @@
 from pydefect.analyzer.calc_results import CalcResults
 from pydefect.analyzer.defect_energy import DefectEnergy, DefectEnergyInfo
 
-from dephon.config_coord import CcdInit, ImageStructureInfo
+from dephon.config_coord import CcdInit
 from dephon.make_config_coord import make_ccd_init
 
 
 def test_make_cc_init(
-        excited_structure, ground_structure, mocker, intermediate_structure):
+        excited_structure, ground_structure, mocker):
 
     excited_calc_results = mocker.Mock(spec=CalcResults, autospec=True)
     excited_calc_results.structure = excited_structure
@@ -27,17 +27,12 @@ def test_make_cc_init(
     actual = make_ccd_init(excited_calc_results,
                            ground_calc_results,
                            excited_defect_energy_info,
-                           ground_defect_energy_info,
-                           [0.5], [0.5])
+                           ground_defect_energy_info)
     expected = CcdInit("Va_O1",
                        excited_structure=excited_structure,
                        ground_structure=ground_structure,
                        excited_charge=1,
                        ground_charge=0,
                        excited_energy=excited_energy,
-                       ground_energy=ground_energy,
-                       e_to_g_image_structures=
-                       [ImageStructureInfo(intermediate_structure, 0.5)],
-                       g_to_e_image_structures=
-                       [ImageStructureInfo(intermediate_structure, 0.5)])
+                       ground_energy=ground_energy)
     assert actual == expected

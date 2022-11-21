@@ -2,6 +2,7 @@
 #  Copyright (c) 2022 Kumagai group.
 import shutil
 from argparse import Namespace
+from pathlib import Path
 
 from dephon.cli.main_function import make_ccd_init_and_dirs
 
@@ -12,8 +13,8 @@ def test_make_ccd_and_dirs(test_files, tmpdir):
     shutil.copytree(test_files / "Na3AgO2" / "Va_O1_0", tmpdir / "Va_O1_0")
     shutil.copytree(test_files / "Na3AgO2" / "Va_O1_1", tmpdir / "Va_O1_1")
 
-    args = Namespace(excited_dir=tmpdir / "Va_O1_0",
-                     ground_dir=tmpdir / "Va_O1_1",
+    args = Namespace(excited_dir=Path("Va_O1_0"),
+                     ground_dir=Path("Va_O1_1"),
                      e_to_g_div_ratios=[0.1, 0.2],
                      g_to_e_div_ratios=[0.3, 0.4])
     make_ccd_init_and_dirs(args)

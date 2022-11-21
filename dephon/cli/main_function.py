@@ -20,21 +20,24 @@ def make_ccd_init_and_dirs(args: Namespace):
         args.ground_dir / "defect_energy_info.yaml")
 
     ccd_init = make_ccd_init(i_calc_results, f_calc_results,
-                             i_defect_energy_info, f_defect_energy_info,
-                             e_to_g_div_ratios=args.e_to_g_div_ratios,
-                             g_to_e_div_ratios=args.g_to_e_div_ratios)
+                             i_defect_energy_info, f_defect_energy_info)
 
     i_charge, f_charge = ccd_init.excited_charge, ccd_init.ground_charge
     path = Path(f"cc/{ccd_init.name}_{i_charge}to{f_charge}")
     path.mkdir(parents=True)
 
-    for i, imag_structures in [("excited", ccd_init.e_to_g_image_structures),
-                               ("ground", ccd_init.g_to_e_image_structures)]:
+    gs, es = ccd_init.ground_structure, ccd_init.excited_structure
+
+    e_to_g = es.interpolate(gs, nimages=args.g_to_e_div_ratios)
+    g_to_e = gs.interpolate(es, nimages=args.e_to_g_div_ratios)
+
+    for i, ratios, ss in [("excited", args.e_to_g_div_ratios, e_to_g),
+                          ("ground", args.e_to_g_div_ratios, g_to_e)]:
         os.mkdir(path / i)
-        for imag_structure in imag_structures:
-            dir_ = path / i / f"disp_{str(imag_structure.displace_ratio)}"
+        for ratio, s in zip(ratios, ss):
+            dir_ = path / i / f"disp_{ratio}"
             os.mkdir(dir_)
-            imag_structure.structure.to(filename=str(dir_ / "POSCAR"))
+            s.to(filename=str(dir_ / "POSCAR"))
 
         if Path(path / i / "disp_0.0").is_dir() is False:
             if i == "excited":

@@ -42,8 +42,6 @@ class CcdInit(MSONable, ToJsonFileMixIn):
                        "total correction:", self.excited_energy.total_correction,
                        "is shallow:", self.excited_energy.is_shallow])
 
-        result.append([])
-
         ground_state = f"{self.name}_{self.ground_charge}"
         result.append(["Ground state:", ground_state,
                        "energy:", self.ground_energy.formation_energy,
@@ -54,10 +52,16 @@ class CcdInit(MSONable, ToJsonFileMixIn):
 
 
 @dataclass
-class Ccd(MSONable):
+class ImageStructureInfo(MSONable):
+    displace_ratio: float  # 0.0: original, 1.0: counter structure
+    energy: float
+
+
+@dataclass
+class Ccd(MSONable, ToJsonFileMixIn):
     name: str
-    dQs: List[float]
-    excited_energies: List[float]
-    ground_energies: List[float]
+    dQ: float
+    excited_image_structures: List[ImageStructureInfo]
+    ground_image_structures: List[ImageStructureInfo]
 
 
