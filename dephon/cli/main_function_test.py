@@ -60,12 +60,6 @@ def test_add_ccd_dirs(tmpdir, mocker, ground_structure, excited_structure,
     assert actual == excited_structure
 
 
-"""
-TODO:    
-- Add charge to prior_info.json
-"""
-
-
 def test_make_ccd(tmpdir, mocker, ground_structure):
     print(tmpdir)
     tmpdir.chdir()
@@ -85,7 +79,7 @@ def test_make_ccd(tmpdir, mocker, ground_structure):
     ccd_init.excited_energy_correction = -1.0
     ccd_init.ground_energy_correction = -2.0
 
-    args = Namespace(ccd_init=ccd_init)
+    args = Namespace(ccd_init=ccd_init, fig_name=None)
     make_ccd(args)
     actual: Ccd = loadfn("ccd.json")
     expected = Ccd(dQ=10.0,

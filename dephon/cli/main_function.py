@@ -56,6 +56,7 @@ def _make_ccd_dirs(args, ccd_init, path: Path):
             dir_ = path / i / f"disp_{ratio}"
             try:
                 dir_.mkdir()
+                logger.info(f"Directory {dir_} was created.")
                 s.to(filename=str(dir_ / "POSCAR"))
                 (dir_ / "prior_info.yaml").write_text(
                     yaml.dump({"charge": c}), None)
@@ -71,8 +72,11 @@ def _make_image_info(relaxed_structure_energy, dir_name):
     result = [ImageStructureInfo(0.0, energy=relaxed_structure_energy)]
     for d in glob(f'{dir_name}/disp_*'):
         disp_ratio = float(d.split("_")[-1])
-        cr: CalcResults = loadfn(Path(d) / "calc_results.json")
-        result.append(ImageStructureInfo(disp_ratio, cr.energy))
+        try:
+            cr: CalcResults = loadfn(Path(d) / "calc_results.json")
+            result.append(ImageStructureInfo(disp_ratio, cr.energy))
+        except FileNotFoundError:
+            pass
     result.sort(key=lambda x: x.displace_ratio)
     return result
 
@@ -94,5 +98,7 @@ def make_ccd(args: Namespace):
               correction="constant FNV")
     ccd.to_json_file()
     plt = ccd_plt(ccd)
-    plt.show()
-    plt.savefig("CCD.pdf")
+    if args.fig_name:
+        plt.savefig(args.fig_name)
+    else:
+        plt.show()
