@@ -9,7 +9,8 @@ from monty.serialization import loadfn
 from pymatgen.io.vasp.inputs import UnknownPotcarWarning
 
 from dephon.version import __version__
-from dephon.cli.main_function import make_ccd_init_and_dirs, make_ccd
+from dephon.cli.main_function import make_ccd_init_and_dirs, make_ccd, \
+    add_ccd_dirs
 
 warnings.simplefilter('ignore', UnknownPotcarWarning)
 
@@ -48,6 +49,32 @@ def parse_args_main(args):
         help="Dividing ratios from ground state to excited state structures.")
     parser_make_ccd_init.set_defaults(
         func=make_ccd_init_and_dirs)
+
+    # -- add_ccd_dirs -----------------------------------
+    parser_add_ccd_dirs = subparsers.add_parser(
+        name="add_ccd_dirs",
+        description="",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+        aliases=['ac'])
+
+    parser_add_ccd_dirs.add_argument(
+        "--ccd_init", type=loadfn,
+        default="ccd_init.json")
+    parser_add_ccd_dirs.add_argument(
+        "-egr", "--e_to_g_div_ratios", type=float, nargs="+",
+        default=[],
+        help="Dividing ratios from excited state to ground state structures.")
+    parser_add_ccd_dirs.add_argument(
+        "-ger", "--g_to_e_div_ratios", type=float, nargs="+",
+        default=[],
+        help="Dividing ratios from ground state to excited state structures.")
+    parser_add_ccd_dirs.add_argument(
+        "-d", "--calc_dir", type=Path, nargs="+",
+        default=Path.cwd(),
+        help="Directory where ground and excited directories are created.")
+    parser_add_ccd_dirs.set_defaults(
+        func=add_ccd_dirs)
+
     # -- make_ccd -----------------------------------
     parser_make_ccd = subparsers.add_parser(
         name="make_ccd",
