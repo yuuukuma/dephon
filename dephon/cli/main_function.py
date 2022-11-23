@@ -10,7 +10,7 @@ from pydefect.analyzer.calc_results import CalcResults
 from vise.input_set.prior_info import PriorInfo
 from vise.util.logger import get_logger
 
-from dephon.config_coord import ImageStructureInfo, Ccd, ccd_plt
+from dephon.config_coord import ImageStructureInfo, Ccd, ccd_plt, CcdPlotter
 from dephon.make_config_coord import make_ccd_init
 
 
@@ -97,8 +97,9 @@ def make_ccd(args: Namespace):
     ccd = Ccd(args.ccd_init.dQ, excited_image_infos, ground_image_infos,
               correction="constant FNV")
     ccd.to_json_file()
-    plt = ccd_plt(ccd)
+    plotter = CcdPlotter(ccd)
+    plotter.construct_plot()
     if args.fig_name:
-        plt.savefig(args.fig_name)
+        plotter.plt.savefig(args.fig_name)
     else:
-        plt.show()
+        plotter.plt.show()

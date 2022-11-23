@@ -7,7 +7,7 @@ import pytest
 from pymatgen.core import Element
 from vise.tests.helpers.assertion import assert_json_roundtrip
 
-from dephon.config_coord import Ccd, ImageStructureInfo, ccd_plt
+from dephon.config_coord import Ccd, ImageStructureInfo, ccd_plt, CcdPlotter
 
 
 def test_ccd_init_to_json_roundtrip(ccd_init, tmpdir):
@@ -57,11 +57,14 @@ def test_ccd(ccd):
 
 
 def test_plot_ccd(ccd):
-    plt = ccd_plt(ccd)
-    plt.show()
+    plotter = CcdPlotter(ccd)
+    plotter.construct_plot()
+    plotter.plt.show()
 
 """ 
 TODO: 
+plot
+
 1. add defect position
 2. consider how to handle the small difference of origin.
 """
