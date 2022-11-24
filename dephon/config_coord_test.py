@@ -34,21 +34,21 @@ Ground state:   Va_O_-1      energy:  -2  correction:  -2"""
 def ccd():
     return Ccd(dQ=10.0,
                excited_image_infos=[
-                   ImageStructureInfo(-0.2, 11.4),
-                   ImageStructureInfo(0.0, 11.0),
-                   ImageStructureInfo(0.2, 11.4),
-                   ImageStructureInfo(0.4, 12.6),
-                   ImageStructureInfo(0.6, 14.6),
-                   ImageStructureInfo(0.8, 17.4),
-                   ImageStructureInfo(1.0, 21.0)],
+                   ImageStructureInfo(-0.2, 11.4, 12.0),
+                   ImageStructureInfo(0.0, 11.0, 10.0),
+                   ImageStructureInfo(0.2, 11.4, 8.0),
+                   ImageStructureInfo(0.4, 12.6, 6.0),
+                   ImageStructureInfo(0.6, 14.6, 4.0),
+                   ImageStructureInfo(0.8, 17.4, 2.0),
+                   ImageStructureInfo(1.0, 21.0, 0.0)],
                ground_image_infos=[
-                   ImageStructureInfo(-0.2, 10.4),
-                   ImageStructureInfo(0.0, 10.0),
-                   ImageStructureInfo(0.2, 10.4),
-                   ImageStructureInfo(0.4, 11.6),
-                   ImageStructureInfo(0.6, 13.6),
-                   ImageStructureInfo(0.8, 16.4),
-                   ImageStructureInfo(1.0, 20.0)])
+                   ImageStructureInfo(-0.2, 10.4, -2.0),
+                   ImageStructureInfo(0.0, 10.0, 0.0),
+                   ImageStructureInfo(0.2, 10.4, 2.0),
+                   ImageStructureInfo(0.4, 11.6, 4.0),
+                   ImageStructureInfo(0.6, 13.6, 6.0),
+                   ImageStructureInfo(0.8, 16.4, 8.0),
+                   ImageStructureInfo(1.0, 20.0, 10.0)])
 
 
 def test_ccd(ccd):

@@ -59,6 +59,7 @@ class CcdInit(MSONable, ToJsonFileMixIn):
 class ImageStructureInfo(MSONable):
     displace_ratio: float  # 0.0: original, 1.0: counter structure
     energy: float  # include the corrections
+    dQ: float
 
 
 @dataclass
@@ -70,7 +71,7 @@ class Ccd(MSONable, ToJsonFileMixIn):
 
     @property
     def ground_dQs(self):
-        return [self.dQ * i.displace_ratio for i in self.ground_image_infos]
+        return [i.dQ for i in self.ground_image_infos]
 
     @property
     def ground_energies(self):
@@ -78,8 +79,7 @@ class Ccd(MSONable, ToJsonFileMixIn):
 
     @property
     def excited_dQs(self):
-        return [self.dQ * (1 - i.displace_ratio)
-                for i in self.excited_image_infos]
+        return [i.dQ for i in self.excited_image_infos]
 
     @property
     def excited_energies(self):
