@@ -53,7 +53,20 @@ def ccd():
 
 def test_ccd(ccd):
     assert ccd.ground_dQs == [-2.0, 0.0, 2.0, 4.0, 6.0, 8.0, 10.0]
-    np.testing.assert_array_almost_equal(ccd.excited_dQs, [12.0, 10.0, 8.0, 6.0, 4.0, 2.0, 0.0])
+    np.testing.assert_array_almost_equal(ccd.excited_dQs,
+                                         [12.0, 10.0, 8.0, 6.0, 4.0, 2.0, 0.0])
+
+
+def test_ccd_get_dQ_from_disp_ratio(ccd):
+    actual = ccd.get_dQ_from_disp_ratio("ground", 0.2)
+    assert actual == 2.0
+    actual = ccd.get_dQ_from_disp_ratio("excited", -0.2)
+    assert actual == 12.0
+
+    with pytest.raises(ValueError):
+        ccd.get_dQ_from_disp_ratio("a", 0.2)
+    with pytest.raises(ValueError):
+        ccd.get_dQ_from_disp_ratio("ground", 0.1)
 
 
 def test_plot_ccd(ccd):

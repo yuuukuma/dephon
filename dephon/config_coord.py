@@ -85,10 +85,20 @@ class Ccd(MSONable, ToJsonFileMixIn):
     def excited_energies(self):
         return [i.energy for i in self.excited_image_infos]
 
-    # @property
-    # def excited_dQs(self):
-    #     return [self.dQ * (1 - i.displace_ratio)
-    #             for i in self.excited_image_infos]
+    def get_dQ_from_disp_ratio(self, state: str, disp_ratio):
+        if state == "ground":
+            image_infos = self.ground_image_infos
+        elif state == "excited":
+            image_infos = self.excited_image_infos
+        else:
+            raise ValueError
+
+        for imag_info in image_infos:
+            if imag_info.displace_ratio == disp_ratio:
+                return imag_info.dQ
+
+        raise ValueError(f"disp ratio {disp_ratio} does not exist in {state}.")
+
 
 def ccd_plt(ccd: Ccd):
     plt.plot(ccd.ground_dQs, ccd.ground_energies)
