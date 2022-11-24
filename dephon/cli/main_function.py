@@ -68,20 +68,25 @@ def add_ccd_dirs(args: Namespace):
     _make_ccd_dirs(args, args.ccd_init, args.calc_dir)
 
 
-def _make_image_info(relaxed_structure_energy, dir_name):
-    result = [ImageStructureInfo(0.0, energy=relaxed_structure_energy)]
-    for d in glob(f'{dir_name}/disp_*'):
-        disp_ratio = float(d.split("_")[-1])
-        try:
-            cr: CalcResults = loadfn(Path(d) / "calc_results.json")
-            result.append(ImageStructureInfo(disp_ratio, cr.energy))
-        except FileNotFoundError:
-            pass
-    result.sort(key=lambda x: x.displace_ratio)
-    return result
-
-
 def make_ccd(args: Namespace):
+    dQ = args.ccd_init.dQ
+
+    def _make_image_info(relaxed_structure_energy, dir_name):
+        _dQ = 0.0 if dir_name == "ground" else dQ
+
+        result = [ImageStructureInfo(0.0, relaxed_structure_energy, _dQ)]
+        for d in glob(f'{dir_name}/disp_*'):
+            disp_ratio = float(d.split("_")[-1])
+            try:
+                cr: CalcResults = loadfn(Path(d) / "calc_results.json")
+            except FileNotFoundError:
+
+                continue
+            _dQ = dQ * disp_ratio if dir_name == "ground" else dQ * (1. - disp_ratio)
+            result.append(ImageStructureInfo(disp_ratio, cr.energy, _dQ))
+        result.sort(key=lambda x: x.displace_ratio)
+        return result
+
     g_energy = args.ccd_init.ground_energy
     ground_image_infos = _make_image_info(g_energy, "ground")
     ground_correction = args.ccd_init.ground_energy_correction
@@ -95,9 +100,12 @@ def make_ccd(args: Namespace):
         i.energy += excited_correction
 
     ccd = Ccd(args.ccd_init.dQ, excited_image_infos, ground_image_infos,
-              correction="constant FNV")
+              correction_type="constant FNV")
     ccd.to_json_file()
-    plotter = CcdPlotter(ccd)
+
+
+def plot_ccd(args: Namespace):
+    plotter = CcdPlotter(args.ccd, spline_deg=args.spline_deg)
     plotter.construct_plot()
     if args.fig_name:
         plotter.plt.savefig(args.fig_name)

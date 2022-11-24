@@ -67,7 +67,7 @@ class Ccd(MSONable, ToJsonFileMixIn):
     dQ: float
     excited_image_infos: List[ImageStructureInfo]
     ground_image_infos: List[ImageStructureInfo]
-    correction: str = None
+    correction_type: str = None
 
     @property
     def ground_dQs(self):
@@ -85,6 +85,10 @@ class Ccd(MSONable, ToJsonFileMixIn):
     def excited_energies(self):
         return [i.energy for i in self.excited_image_infos]
 
+    # @property
+    # def excited_dQs(self):
+    #     return [self.dQ * (1 - i.displace_ratio)
+    #             for i in self.excited_image_infos]
 
 def ccd_plt(ccd: Ccd):
     plt.plot(ccd.ground_dQs, ccd.ground_energies)
