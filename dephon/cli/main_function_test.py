@@ -98,8 +98,8 @@ def test_make_ccd(tmpdir, mocker, ground_structure, ccd):
     assert actual == ccd
 
 
-def test_plot_ccd(ccd):
-    args = Namespace(ccd=ccd, spline_deg=1, fig_name="ccd.pdf")
+def test_plot_ccd(ccd, tmpdir):
+    args = Namespace(ccd=ccd, spline_deg=1, fig_name=tmpdir / "ccd.pdf")
     plot_ccd(args)
 
 
