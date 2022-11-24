@@ -4,7 +4,7 @@ from copy import deepcopy
 
 from pydefect.analyzer.band_edge_states import BandEdgeOrbitalInfos, OrbitalInfo
 
-from dephon.eigenvalue_plotter import EigenvaluePlotter
+from dephon.plot_eigenvalues import EigenvaluePlotter
 
 
 def test_eigenvalue_plotter_no_mag(mocker):
