@@ -4,6 +4,7 @@ from argparse import Namespace
 from pathlib import Path
 
 from dephon.cli.main import parse_args_main
+from dephon.config_coord import CcdInit
 
 
 def test_main_make_ccd_init_and_dirs():
@@ -34,11 +35,21 @@ def test_main_make_ccd_init_and_dirs_w_args():
     assert parsed_args == expected
 
 
-# def test_main_make_ccd():
-#     parsed_args = parse_args_main(["c", "--ccd_init"])
-#     expected = Namespace(
-#         ccd_init=,
-#         func=parsed_args.func)
-#     assert parsed_args == expected
+def test_main_make_ccd_wo_args(mocker):
+    mock_ccd_init = mocker.Mock(spec=CcdInit, autospec=True)
+
+    def side_effect(filename):
+        if filename == "ccd_init.json":
+            return mock_ccd_init
+        else:
+            raise ValueError
+
+    mocker.patch("dephon.cli.main.loadfn", side_effect=side_effect)
+
+    parsed_args = parse_args_main(["c"])
+    expected = Namespace(
+        ccd_init=mock_ccd_init,
+        func=parsed_args.func)
+    assert parsed_args == expected
 
 

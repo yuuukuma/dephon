@@ -84,10 +84,8 @@ def parse_args_main(args):
 
     parser_make_ccd.add_argument(
         "--ccd_init", type=loadfn, default="ccd_init.json")
-    parser_make_ccd.add_argument(
-        "--fig_name", type=str, default=None)
-    parser_make_ccd.set_defaults(
-        func=make_ccd)
+    parser_make_ccd.set_defaults(func=make_ccd)
+
     # ------------------------------------------------------------------------
     return parser.parse_args(args)
 
