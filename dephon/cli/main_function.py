@@ -69,10 +69,8 @@ def add_ccd_dirs(args: Namespace):
 
 
 def make_ccd(args: Namespace):
-    dQ = args.ccd_init.dQ
-
     def _make_image_info(relaxed_structure_energy, dir_name):
-        _dQ = 0.0 if dir_name == "ground" else dQ
+        _dQ = 0.0 if dir_name == "ground" else args.ccd_init.dQ
 
         result = [ImageStructureInfo(0.0, relaxed_structure_energy, _dQ)]
         for d in glob(f'{dir_name}/disp_*'):
@@ -107,7 +105,5 @@ def make_ccd(args: Namespace):
 def plot_ccd(args: Namespace):
     plotter = CcdPlotter(args.ccd, spline_deg=args.spline_deg)
     plotter.construct_plot()
-    if args.fig_name:
-        plotter.plt.savefig(args.fig_name)
-    else:
-        plotter.plt.show()
+    plotter.plt.savefig(args.fig_name)
+    plotter.plt.show()
