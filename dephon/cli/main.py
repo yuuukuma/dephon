@@ -10,7 +10,7 @@ from pymatgen.io.vasp.inputs import UnknownPotcarWarning
 
 from dephon.version import __version__
 from dephon.cli.main_function import make_ccd_init_and_dirs, make_ccd, \
-    add_ccd_dirs
+    add_ccd_dirs, plot_ccd
 
 warnings.simplefilter('ignore', UnknownPotcarWarning)
 
@@ -85,6 +85,22 @@ def parse_args_main(args):
     parser_make_ccd.add_argument(
         "--ccd_init", type=loadfn, default="ccd_init.json")
     parser_make_ccd.set_defaults(func=make_ccd)
+
+    # -- plot_ccd -----------------------------------
+    parser_plot_ccd = subparsers.add_parser(
+        name="plot_ccd",
+        description="",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+        aliases=['pc'])
+
+    parser_plot_ccd.add_argument(
+        "--ccd", type=loadfn, default="ccd.json")
+    parser_plot_ccd.add_argument(
+        "--spline_deg", type=int, default=3)
+    parser_plot_ccd.add_argument(
+        "--fig_name", type=str, default="ccd.pdf")
+
+    parser_plot_ccd.set_defaults(func=plot_ccd)
 
     # ------------------------------------------------------------------------
     return parser.parse_args(args)
