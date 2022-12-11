@@ -4,7 +4,7 @@ from math import sqrt
 
 import numpy as np
 import pytest
-from pymatgen.core import Element
+from pymatgen.core import Element, Structure, Lattice
 from vise.tests.helpers.assertion import assert_json_roundtrip
 
 from dephon.config_coord import Ccd, ImageStructureInfo, CcdPlotter, \
@@ -33,7 +33,10 @@ def test_ccd_dQ(ccd_init):
 
 def test_ccd_string(ccd_init):
     actual = ccd_init.__str__()
-    expected = """Excited state:  Va_O_0 + e-  energy:  -1  correction:  -1
+    expected = """dQ              2.46
+dR              2.45
+M               1.01
+Excited state:  Va_O_0 + e-  energy:  -1  correction:  -1
 Ground state:   Va_O_-1      energy:  -2  correction:  -2"""
     assert actual == expected
 

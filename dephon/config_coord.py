@@ -6,7 +6,6 @@ from typing import List
 import numpy as np
 from matplotlib import pyplot as plt
 from monty.json import MSONable
-from pydefect.analyzer.defect_energy import DefectEnergy
 from pymatgen.analysis.defects.ccd import get_dQ
 from pymatgen.core import Structure
 from scipy import interpolate
@@ -47,6 +46,14 @@ class CcdInit(MSONable, ToJsonFileMixIn):
     def dQ(self):
         return get_dQ(self.excited_structure, self.ground_structure)
 
+    @property
+    def dR(self):
+        return get_dR(self.excited_structure, self.ground_structure)
+
+    @property
+    def modal_mass(self):
+        return (self.dQ / self.dR) ** 2
+
     def __str__(self):
         charge_diff = self.ground_charge - self.excited_charge
         if charge_diff == -1:
@@ -57,7 +64,9 @@ class CcdInit(MSONable, ToJsonFileMixIn):
             raise ValueError("The charge difference between excited and ground "
                              "states is neither 1 nor -1")
 
-        result = []
+        result = [["dQ", round(self.dQ, 2)],
+                  ["dR", round(self.dR, 2)],
+                  ["M", round(self.modal_mass, 2)]]
         excited_state = f"{self.name}_{self.excited_charge} + {trapped_carrier}"
         result.append(["Excited state:", excited_state,
                        "energy:", self.excited_energy,
