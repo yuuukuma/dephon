@@ -10,7 +10,7 @@ from pymatgen.io.vasp.inputs import UnknownPotcarWarning
 
 from dephon.version import __version__
 from dephon.cli.main_function import make_ccd_init_and_dirs, make_ccd, \
-    add_ccd_dirs, plot_ccd
+    add_ccd_dirs, plot_ccd, plot_eigenvalues
 
 warnings.simplefilter('ignore', UnknownPotcarWarning)
 
@@ -102,6 +102,24 @@ def parse_args_main(args):
 
     parser_plot_ccd.set_defaults(func=plot_ccd)
 
+    # -- plot_eigenvalues -----------------------------------
+    parser_plot_eigenvalues = subparsers.add_parser(
+        name="plot_eigenvalues",
+        description="",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+        aliases=['pe'])
+
+    parser_plot_eigenvalues.add_argument(
+        "--ccd", type=loadfn, default="ccd.json")
+    parser_plot_eigenvalues.add_argument(
+        "--dir", type=Path,
+        help="Set ground or excited directory path. E.g. XXX/YY/ground")
+    parser_plot_eigenvalues.add_argument(
+        "--fig_name", type=str, default="eigenvalues.pdf")
+    parser_plot_eigenvalues.add_argument(
+        "-pbes", "--perfect_band_edge_state", type=loadfn,
+        help="Path to the perfect_band_edge_state.json.")
+    parser_plot_eigenvalues.set_defaults(func=plot_eigenvalues)
     # ------------------------------------------------------------------------
     return parser.parse_args(args)
 

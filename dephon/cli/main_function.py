@@ -6,13 +6,13 @@ from pathlib import Path
 
 import yaml
 from monty.serialization import loadfn
+from pydefect.analyzer.band_edge_states import PerfectBandEdgeState
 from pydefect.analyzer.calc_results import CalcResults
-from vise.input_set.prior_info import PriorInfo
 from vise.util.logger import get_logger
 
-from dephon.config_coord import ImageStructureInfo, Ccd, ccd_plt, CcdPlotter
+from dephon.config_coord import ImageStructureInfo, Ccd, CcdPlotter
 from dephon.make_config_coord import make_ccd_init
-
+from dephon.plot_eigenvalues import EigenvaluePlotter
 
 logger = get_logger(__name__)
 
@@ -109,3 +109,26 @@ def plot_ccd(args: Namespace):
     plotter.construct_plot()
     plotter.plt.savefig(args.fig_name)
     plotter.plt.show()
+
+
+def plot_eigenvalues(args: Namespace):
+    qs, orb_infos = [], []
+    state = Path(args.dir).name
+
+    for d in glob(f'{args.dir}/disp_*'):
+        try:
+            orb_infos.append(loadfn(Path(d) / "band_edge_orbital_infos.json"))
+            disp_ratio = float(d.split("_")[-1])
+            qs.append(args.ccd.get_dQ_from_disp_ratio(state, disp_ratio))
+        except FileNotFoundError:
+            logger.info(f"band_edge_orbital_infos.json does not exist in {d}")
+            pass
+
+    pcr: PerfectBandEdgeState = args.perfect_band_edge_state
+    vbm, cbm = pcr.vbm_info.energy, pcr.cbm_info.energy
+    eigval_plotter = EigenvaluePlotter(orb_infos, qs, vbm, cbm)
+    eigval_plotter.construct_plot()
+    eigval_plotter.plt.savefig(args.fig_name)
+    eigval_plotter.plt.show()
+
+
