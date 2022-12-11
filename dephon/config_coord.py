@@ -15,6 +15,22 @@ from vise.util.matplotlib import float_to_int_formatter
 from vise.util.mix_in import ToJsonFileMixIn
 
 
+def get_dR(ground: Structure, excited: Structure) -> float:
+    """Summation of atomic displacement distance
+
+    Args:
+        ground (Structure): Reference structure
+        excited (Structure): Target structure
+
+    Note that constant deviation is removed by e.g., aligning the farthest atom.
+
+    Returns:
+        The Summed atomic displacement distance in float
+    """
+    return np.sqrt(
+        np.sum([x.distance(y) ** 2 for x, y in zip(ground, excited)]))
+
+
 @dataclass
 class CcdInit(MSONable, ToJsonFileMixIn):
     name: str

@@ -7,7 +7,15 @@ import pytest
 from pymatgen.core import Element
 from vise.tests.helpers.assertion import assert_json_roundtrip
 
-from dephon.config_coord import Ccd, ImageStructureInfo, ccd_plt, CcdPlotter
+from dephon.config_coord import Ccd, ImageStructureInfo, CcdPlotter, \
+    get_dR
+
+
+def test_get_dR():
+    lattice = Lattice.orthorhombic(10, 20, 30)
+    structure1 = Structure(lattice, ["H"], [[0.0, 0.0, 0.0]])
+    structure2 = Structure(lattice, ["H"], [[0.1, 0.1, 0.1]])
+    assert get_dR(structure1, structure2) == sqrt(1**2+2**2+3**2)
 
 
 def test_ccd_init_to_json_roundtrip(ccd_init, tmpdir):
