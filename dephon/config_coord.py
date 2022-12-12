@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 #  Copyright (c) 2022 Kumagai group.
 from dataclasses import dataclass
-from typing import List
+from typing import List, Dict
 
 import numpy as np
 from matplotlib import pyplot as plt
@@ -41,6 +41,10 @@ class CcdInit(MSONable, ToJsonFileMixIn):
     excited_energy_correction: float
     ground_energy: float
     ground_energy_correction: float
+    vbm: float
+    cbm: float
+    supercell_vbm: float
+    supercell_cbm: float
 
     @property
     def dQ(self):
@@ -81,54 +85,32 @@ class CcdInit(MSONable, ToJsonFileMixIn):
 
 
 @dataclass
-class ImageStructureInfo(MSONable):
-    displace_ratio: float  # 0.0: original, 1.0: counter structure
-    energy: float  # include the corrections
+class ImageStructureInfo(MSONable, ToJsonFileMixIn):
     dQ: float
+    energy: float = None
+    correction: float = None
+    correction_type: str = None
+
+    @property
+    def corrected_energy(self):
+        return self.energy + self.correction
 
 
 @dataclass
 class Ccd(MSONable, ToJsonFileMixIn):
-    dQ: float
-    excited_image_infos: List[ImageStructureInfo]
-    ground_image_infos: List[ImageStructureInfo]
-    correction_type: str = None
+    image_infos: Dict[str, List[ImageStructureInfo]]
+    name: str = None
+
+    def __post_init__(self):
+        for v in self.image_infos.values():
+            v.sort(key=lambda x: x.dQ)
 
     @property
-    def ground_dQs(self):
-        return [i.dQ for i in self.ground_image_infos]
-
-    @property
-    def ground_energies(self):
-        return [i.energy for i in self.ground_image_infos]
-
-    @property
-    def excited_dQs(self):
-        return [i.dQ for i in self.excited_image_infos]
-
-    @property
-    def excited_energies(self):
-        return [i.energy for i in self.excited_image_infos]
-
-    def get_dQ_from_disp_ratio(self, state: str, disp_ratio):
-        if state == "ground":
-            image_infos = self.ground_image_infos
-        elif state == "excited":
-            image_infos = self.excited_image_infos
-        else:
-            raise ValueError
-
-        for imag_info in image_infos:
-            if imag_info.displace_ratio == disp_ratio:
-                return imag_info.dQ
-
-        raise ValueError(f"disp ratio {disp_ratio} does not exist in {state}.")
-
-
-def ccd_plt(ccd: Ccd):
-    plt.plot(ccd.ground_dQs, ccd.ground_energies)
-    plt.plot(ccd.excited_dQs, ccd.excited_energies)
-    return plt
+    def min_energy(self):
+        energies = []
+        for imag_infos in self.image_infos.values():
+            energies += [imag_info.corrected_energy for imag_info in imag_infos]
+        return min(energies)
 
 
 def spline3(x, y, point, deg):
@@ -157,25 +139,19 @@ class CcdPlotter:
         self.plt.tight_layout()
 
     def _add_ccd(self):
-        g_dQs, g_energies = self._ccd.ground_dQs, self._ccd.ground_energies
-        e_dQs, e_energies = self._ccd.excited_dQs, self._ccd.excited_energies
-        if self._set_energy_zero:
-            base_energy = min(g_energies + e_energies)
-            g_energies = [e - base_energy for e in g_energies]
-            e_energies = [e - base_energy for e in e_energies]
-
-        x, y = spline3(g_dQs, g_energies, 100, self._spline_deg)
-        self.plt.plot(x, y, label="splprep")
-        self.plt.scatter(g_dQs, g_energies, marker='o')
-
-        x, y = spline3(e_dQs, e_energies, 100, self._spline_deg)
-        self.plt.plot(x, y, label="splprep")
-        self.plt.scatter(e_dQs, e_energies, marker='o')
+        min_e = self._ccd.min_energy
+        for more_name, v in self._ccd.image_infos.items():
+            dQs = [vv.dQ for vv in v]
+            energies = [vv.corrected_energy - min_e for vv in v]
+            x, y = spline3(dQs, energies, 100, self._spline_deg)
+            self.plt.plot(x, y, label=more_name)
+            self.plt.scatter(dQs, energies, marker='o')
 
     def _set_labels(self):
         ax = self.plt.gca()
         ax.set_xlabel("Q (amu$^{1/2}$ Å)")
         ax.set_ylabel("Energy (eV)")
+        ax.legend()
 
     def _set_title(self):
         self.plt.gca().set_title(self._title)

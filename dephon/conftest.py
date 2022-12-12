@@ -79,15 +79,21 @@ def ccd_init(excited_structure, ground_structure, intermediate_structure):
         excited_energy=-1.0,
         excited_energy_correction=-1.0,
         ground_energy=-2.0,
-        ground_energy_correction=-2.0)
+        ground_energy_correction=-2.0,
+        vbm=1.0,
+        cbm=2.0,
+        supercell_vbm=1.1,
+        supercell_cbm=1.9)
 
 
 @pytest.fixture
 def ccd(excited_structure, ground_structure, intermediate_structure):
-    return Ccd(
-        dQ=1.0,
-        excited_image_infos=[ImageStructureInfo(0.1, -3.0)],
-        ground_image_infos=[ImageStructureInfo(0.2, -4.0)])
+    return Ccd(image_infos={
+        "excited": [ImageStructureInfo(0.0, 0.1, -3.0),
+                    ImageStructureInfo(1.0, 1.1, -3.0)],
+        "ground": [ImageStructureInfo(0.0, 0.2, -4.0),
+                   ImageStructureInfo(1.0, 1.2, -4.0)]},
+        name="test")
 
 
 @pytest.fixture(scope="session")
