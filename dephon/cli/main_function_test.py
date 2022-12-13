@@ -29,16 +29,16 @@ def test_add_ccd_dirs(test_files, tmpdir, mocker):
 
     p_band_edge_state = mocker.Mock(spec=PerfectBandEdgeState, autospec=True)
     p_band_edge_state.vbm_info = EdgeInfo(1, (0.0, 0.0, 0.0),
-                                      OrbitalInfo(2.0, {}, 0.0))
+                                          OrbitalInfo(2.0, {}, 0.0))
     p_band_edge_state.cbm_info = EdgeInfo(1, (0.0, 0.0, 0.0),
-                                      OrbitalInfo(8.0, {}, 0.0))
+                                          OrbitalInfo(8.0, {}, 0.0))
 
     _dir = test_files / "Na3AgO2"
 
     args = Namespace(excited_dir=_dir / "Va_O1_0",
                      ground_dir=_dir / "Va_O1_1",
                      unitcell=unitcell,
-                     perfect_band_edge_state=p_band_edge_state)
+                     p_state=p_band_edge_state)
     make_ccd_init(args)
     actual = loadfn("cc/Va_O1_0to1/ccd_init.json").__str__()
     expected = """dQ              2.24
@@ -56,8 +56,8 @@ def test_make_ccd_dirs(tmpdir, mocker, ground_structure, excited_structure,
     ccd_init.dQ = 10.0
     ccd_init.ground_structure = ground_structure
     ccd_init.excited_structure = excited_structure
-    ccd_init.ground_correction = 100.0
-    ccd_init.excited_correction = 200.0
+    ccd_init.ground_energy_correction = 100.0
+    ccd_init.excited_energy_correction = 200.0
 
     ccd_init.excited_charge = -1
     ccd_init.ground_charge = 0

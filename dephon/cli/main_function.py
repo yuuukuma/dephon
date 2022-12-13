@@ -62,8 +62,8 @@ def make_ccd_init(args: Namespace):
         ground_energy_correction=g_correction.correction_energy,
         vbm=args.unitcell.vbm,
         cbm=args.unitcell.cbm,
-        supercell_vbm=args.perfect_band_edge_state.vbm_info.energy,
-        supercell_cbm=args.perfect_band_edge_state.cbm_info.energy)
+        supercell_vbm=args.p_state.vbm_info.energy,
+        supercell_cbm=args.p_state.cbm_info.energy)
 
     transfer_name = f"{ccd_init.excited_charge}to{ccd_init.ground_charge}"
     path = Path(f"cc/{ccd_init.name}_{transfer_name}")
@@ -88,10 +88,10 @@ def make_ccd_dirs(args: Namespace):
 
         if state == "ground":
             charge = args.ccd_init.ground_charge
-            correction = args.ccd_init.ground_correction
+            correction = args.ccd_init.ground_energy_correction
         else:
             charge = args.ccd_init.excited_charge
-            correction = args.ccd_init.excited_correction
+            correction = args.ccd_init.excited_energy_correction
 
         for ratio, structure, dQ in zip(ratios, structures, dQs):
             _make_dir(charge, state, ratio, structure, dQ, correction)

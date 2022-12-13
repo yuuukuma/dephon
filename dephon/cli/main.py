@@ -6,6 +6,7 @@ import warnings
 from pathlib import Path
 
 from monty.serialization import loadfn
+from pydefect.cli.main import add_sub_parser
 from pymatgen.io.vasp.inputs import UnknownPotcarWarning
 
 from dephon.version import __version__
@@ -26,10 +27,14 @@ def parse_args_main(args):
     parser = argparse.ArgumentParser(description=description, epilog=epilog)
     subparsers = parser.add_subparsers()
 
+    unitcell_parser = add_sub_parser(argparse, name="unitcell")
+    pbes_parser = add_sub_parser(argparse, name="perfect_band_edge_state")
+
     # -- make_ccd_init -----------------------------------
     parser_make_ccd_init = subparsers.add_parser(
         name="make_ccd_init",
         description="",
+        parents=[unitcell_parser, pbes_parser],
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
         aliases=['mci'])
 

@@ -68,18 +68,23 @@ class CcdInit(MSONable, ToJsonFileMixIn):
             raise ValueError("The charge difference between excited and ground "
                              "states is neither 1 nor -1")
 
-        result = [["dQ", round(self.dQ, 2)],
-                  ["dR", round(self.dR, 2)],
-                  ["M", round(self.modal_mass, 2)]]
+        result = [["name", self.name],
+                  ["vbm", round(self.vbm, 2),
+                   "supercell vbm", round(self.supercell_vbm, 2)],
+                  ["cbm", round(self.cbm, 2),
+                   "supercell cbm", round(self.supercell_cbm, 2)],
+                  ["dQ (amu^0.5 Å)", round(self.dQ, 2)],
+                  ["dR (Å)", round(self.dR, 2)],
+                  ["M (amu)", round(self.modal_mass, 2)]]
         excited_state = f"{self.name}_{self.excited_charge} + {trapped_carrier}"
         result.append(["Excited state:", excited_state,
                        "energy:", self.excited_energy,
-                       "correction:", self.excited_energy_correction])
+                       "correction:", round(self.excited_energy_correction, 3)])
 
         ground_state = f"{self.name}_{self.ground_charge}"
         result.append(["Ground state:", ground_state,
                        "energy:", self.ground_energy,
-                       "correction:", self.ground_energy_correction])
+                       "correction:", round(self.ground_energy_correction, 3)])
 
         return tabulate(result, tablefmt="plain")
 
