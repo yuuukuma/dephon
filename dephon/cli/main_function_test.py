@@ -21,7 +21,7 @@ from dephon.cli.main_function import make_ccd_init, make_ccd, plot_ccd, \
 from dephon.config_coord import Ccd, CcdInit, ImageStructureInfo
 
 
-def test_add_ccd_dirs(test_files, tmpdir, mocker):
+def test_make_ccd_init(test_files, tmpdir, mocker):
     tmpdir.chdir()
     unitcell = mocker.Mock(spec=Unitcell, autospec=True)
     unitcell.vbm = 0.0
@@ -41,11 +41,17 @@ def test_add_ccd_dirs(test_files, tmpdir, mocker):
                      p_state=p_band_edge_state)
     make_ccd_init(args)
     actual = loadfn("cc/Va_O1_0to1/ccd_init.json").__str__()
-    expected = """dQ              2.24
-dR              0.32
-M               48.37
-Excited state:  Va_O1_0 + h+  energy:  -458.348  correction:  0
-Ground state:   Va_O1_1       energy:  -461.49   correction:  0.238665"""
+    expected = """name: Va_O1
+vbm              0.000  supercell vbm  2.000
+cbm             10.000  supercell cbm  8.000
+dQ (amu^0.5 Å)   2.242
+dR (Å)           0.322
+M (amu)         48.367
+------------------------------------------------------------
+ state    initial symm    final symm     energy    correction    corrected energy
+Va_O1_0        m              m        -458.348         0.000            -458.348
+Va_O1_1        m              m        -461.490         0.239            -461.251
+ZPL: 2.904"""
     assert actual == expected
 
 
@@ -121,8 +127,8 @@ def test_make_ccd(tmpdir, mocker, ground_structure):
 
     args = Namespace(ccd_init=ccd_init,
                      ground_dirs=[Path("ground/disp_-0.2"), Path("ground/disp_0.2")],
-                     excited_dirs=[Path("excited/disp_-0.2"), Path("excited/disp_0.2")])
-    print(Path.cwd())
+                     excited_dirs=[Path("excited/disp_-0.2"), Path("excited/disp_0.2")],
+                     skip_shallow=False)
     make_ccd(args)
     actual: Ccd = loadfn("ccd.json")
 

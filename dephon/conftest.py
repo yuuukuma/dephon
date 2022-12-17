@@ -74,12 +74,14 @@ def ccd_init(excited_structure, ground_structure, intermediate_structure):
     ground_state = MinimumPointInfo(charge=-1, structure=ground_structure,
                                     energy=-2.0123456,
                                     energy_correction=-2.1234567,
-                                    site_symmetry="2mm",
+                                    initial_site_symm="2mm",
+                                    final_site_symm="2m",
                                     site_symmetry_opt_num=8)
     excited_state = MinimumPointInfo(charge=0, structure=excited_structure,
                                      energy=-1.0123456,
                                      energy_correction=-1.1234567,
-                                     site_symmetry="2",
+                                     initial_site_symm="2mm",
+                                     final_site_symm="2",
                                      site_symmetry_opt_num=2)
 
     return CcdInit(

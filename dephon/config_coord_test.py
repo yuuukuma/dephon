@@ -40,9 +40,9 @@ dQ (amu^0.5 Å)  2.459
 dR (Å)          2.449
 M (amu)         1.008
 ------------------------------------------------------------
- state    site symm     energy    correction    corrected energy
-Va_O_0        2         -1.012        -1.123              -2.136
-Va_O_-1      2mm        -2.012        -2.123              -4.136
+ state    initial symm    final symm     energy    correction    corrected energy
+Va_O_0        2mm             2          -1.012        -1.123              -2.136
+Va_O_-1       2mm             2m         -2.012        -2.123              -4.136
 ZPL: 2.000"""
     assert actual == expected
 

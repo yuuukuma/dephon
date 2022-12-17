@@ -11,7 +11,7 @@ from pymatgen.io.vasp.inputs import UnknownPotcarWarning
 
 from dephon.version import __version__
 from dephon.cli.main_function import make_ccd_init, make_ccd, \
-    make_ccd_dirs, plot_ccd, plot_eigenvalues
+    make_ccd_dirs, plot_ccd, plot_eigenvalues, set_fitting_q_range
 
 warnings.simplefilter('ignore', UnknownPotcarWarning)
 
@@ -54,8 +54,7 @@ def parse_args_main(args):
         aliases=['mcd'])
 
     parser_add_ccd_dirs.add_argument(
-        "--ccd_init", type=loadfn,
-        default="ccd_init.json")
+        "--ccd_init", type=loadfn, default="ccd_init.json")
     parser_add_ccd_dirs.add_argument(
         "-egr", "--e_to_g_div_ratios", type=float, nargs="+",
         default=[-0.4, -0.2, 0.2, 0.4, 0.6, 0.8],
@@ -86,7 +85,27 @@ def parse_args_main(args):
     parser_make_ccd.add_argument(
         "-e", "--excited_dirs", type=Path, nargs="+",
         help="Directories for excited directories.")
+    parser_make_ccd.add_argument(
+        "-s", "--skip_shallow", action="store_true",
+        help="Set when skip shallow states.")
     parser_make_ccd.set_defaults(func=make_ccd)
+
+    # -- set_fitting_q_range -----------------------------------
+    parser_set_fitting_q_range = subparsers.add_parser(
+        name="set_fitting_q_range",
+        description="",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+        aliases=['sfq'])
+
+    parser_set_fitting_q_range.add_argument(
+        "--ccd", type=loadfn, default="ccd.json")
+    parser_set_fitting_q_range.add_argument(
+        "--image_name", type=str, required=True)
+    parser_set_fitting_q_range.add_argument(
+        "--q_min", type=float)
+    parser_set_fitting_q_range.add_argument(
+        "--q_max", type=float)
+    parser_set_fitting_q_range.set_defaults(func=set_fitting_q_range)
 
     # -- plot_ccd -----------------------------------
     parser_plot_ccd = subparsers.add_parser(
@@ -111,6 +130,8 @@ def parse_args_main(args):
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
         aliases=['pe'])
 
+    parser_plot_eigenvalues.add_argument(
+        "--ccd_init", type=loadfn, default="ccd_init.json")
     parser_plot_eigenvalues.add_argument(
         "--ccd", type=loadfn, default="ccd.json")
     parser_plot_eigenvalues.add_argument(

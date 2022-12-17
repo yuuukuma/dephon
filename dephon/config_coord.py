@@ -42,7 +42,8 @@ class MinimumPointInfo(MSONable):
     structure: Structure
     energy: float
     energy_correction: float
-    site_symmetry: str
+    initial_site_symm: str
+    final_site_symm: str
     site_symmetry_opt_num: int
 
     @property
@@ -121,13 +122,13 @@ class CcdInit(MSONable, ToJsonFileMixIn):
 
         result.append("-" * 60)
 
-        headers = ["state", "site symm", "energy", "correction",
-                   "corrected energy"]
+        headers = ["state", "initial symm", "final symm", "energy",
+                   "correction", "corrected energy"]
         table = []
         for s in [self.excited_state, self.ground_state]:
             state_str = f"{self.name}_{s.charge}"
-            table.append([state_str, s.site_symmetry, s.energy,
-                          s.energy_correction, s.corrected_energy])
+            table.append([state_str, s.initial_site_symm, s.final_site_symm,
+                          s.energy, s.energy_correction, s.corrected_energy])
 
         result.append(
             tabulate(table, tablefmt="plain", headers=headers, floatfmt=".3f",

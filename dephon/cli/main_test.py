@@ -74,6 +74,7 @@ def test_main_make_ccd_wo_args(mocker):
         ccd_init=mock_ccd_init,
         ground_dirs=[Path("Va_O1_4")],
         excited_dirs=[Path("Va_O1_3")],
+        skip_shallow=False,
         func=parsed_args.func)
     assert parsed_args == expected
 

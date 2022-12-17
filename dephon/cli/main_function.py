@@ -8,33 +8,36 @@ from pathlib import Path
 
 import yaml
 from monty.serialization import loadfn
-from pydefect.analyzer.band_edge_states import PerfectBandEdgeState
+from pydefect.analyzer.band_edge_states import BandEdgeState
 from pydefect.analyzer.calc_results import CalcResults
 from pydefect.analyzer.defect_energy import DefectEnergyInfo
-from pydefect.analyzer.unitcell import Unitcell
+from pydefect.analyzer.defect_structure_info import DefectStructureInfo
 from pydefect.cli.main_functions import get_calc_results
 from pydefect.cli.main_tools import parse_dirs
-from pydefect.corrections.efnv_correction import ExtendedFnvCorrection
 from vise.util.logger import get_logger
+from vise.util.structure_symmetrizer import num_sym_op
 
-from dephon.config_coord import ImageStructureInfo, Ccd, CcdPlotter, CcdInit
+from dephon.config_coord import ImageStructureInfo, Ccd, CcdPlotter, CcdInit, \
+    MinimumPointInfo
 from dephon.plot_eigenvalues import EigenvaluePlotter
 
 logger = get_logger(__name__)
 
 
-def _parse_dir(_dir):
+def _min_info_from_dir(_dir):
     energy_info = DefectEnergyInfo.from_yaml(_dir / "defect_energy_info.yaml")
-    calc_results = loadfn(_dir / "calc_results.json")
-    correction = loadfn(_dir / "correction.json")
-    return energy_info, calc_results, correction
-
-
-def _check_charge_difference(e_charge, g_charge):
-    if abs(g_charge - e_charge) != 1:
-        logger.critical(
-            f"Ground and excited charge states are {g_charge} and {e_charge}. "
-            "The difference is not 1. You should understand what you're doing.")
+    calc_results: CalcResults = loadfn(_dir / "calc_results.json")
+    defect_structure_info: DefectStructureInfo \
+        = loadfn(_dir / "defect_structure_info.json")
+    min_point_info = MinimumPointInfo(
+        charge=energy_info.charge,
+        structure=calc_results.structure,
+        energy=calc_results.energy,
+        energy_correction=energy_info.defect_energy.total_correction,
+        initial_site_symm=defect_structure_info.initial_site_sym,
+        final_site_symm=defect_structure_info.final_site_sym,
+        site_symmetry_opt_num=num_sym_op[defect_structure_info.final_site_sym])
+    return min_point_info, energy_info.name
 
 
 def _check_ground_exited_names(e_name, g_name):
@@ -44,26 +47,17 @@ def _check_ground_exited_names(e_name, g_name):
 
 
 def make_ccd_init(args: Namespace):
-    g_energy_info, g_calc_results, g_correction = _parse_dir(args.ground_dir)
-    e_energy_info, e_calc_results, e_correction = _parse_dir(args.excited_dir)
+    ground_state, g_name = _min_info_from_dir(args.ground_dir)
+    excited_state, e_name = _min_info_from_dir(args.excited_dir)
+    _check_ground_exited_names(e_name, g_name)
 
-    _check_charge_difference(e_energy_info.charge, g_energy_info.charge)
-    _check_ground_exited_names(e_energy_info.name, g_energy_info.name)
-
-    ccd_init = CcdInit(
-        name=g_energy_info.name,
-        excited_structure=e_calc_results.structure,
-        ground_structure=g_calc_results.structure,
-        excited_charge=e_correction.charge,
-        ground_charge=g_correction.charge,
-        excited_energy=e_calc_results.energy,
-        ground_energy=g_calc_results.energy,
-        excited_energy_correction=e_correction.correction_energy,
-        ground_energy_correction=g_correction.correction_energy,
-        vbm=args.unitcell.vbm,
-        cbm=args.unitcell.cbm,
-        supercell_vbm=args.p_state.vbm_info.energy,
-        supercell_cbm=args.p_state.cbm_info.energy)
+    ccd_init = CcdInit(name=g_name,
+                       ground_state=ground_state,
+                       excited_state=excited_state,
+                       vbm=args.unitcell.vbm,
+                       cbm=args.unitcell.cbm,
+                       supercell_vbm=args.p_state.vbm_info.energy,
+                       supercell_cbm=args.p_state.cbm_info.energy)
 
     transfer_name = f"{ccd_init.excited_charge}to{ccd_init.ground_charge}"
     path = Path(f"cc/{ccd_init.name}_{transfer_name}")
@@ -118,6 +112,16 @@ def _make_dir(charge, state, ratio, structure, dQ, correction):
 def make_ccd(args: Namespace):
 
     def _inner(dir_: Path):
+        if args.skip_shallow:
+            try:
+                band_edge_state: BandEdgeState = loadfn(dir_ / "band_edge_states.json")
+            except FileExistsError:
+                logger.warning("To judge if the states are shallow or not,"
+                               "we need band_edge_states.json.")
+                raise
+            if band_edge_state.is_shallow:
+                logger.info(f"Skip {dir_} because it has shallow carriers.")
+                return
         image_info: ImageStructureInfo = loadfn(dir_ / "image_structure_info.json")
         if image_info.energy is None:
             calc_results = get_calc_results(dir_, False)
@@ -155,6 +159,13 @@ def make_ccd(args: Namespace):
     ccd.to_json_file()
 
 
+def set_fitting_q_range(args: Namespace):
+    ccd: Ccd = args.ccd
+    ccd.set_q_range(args.image_name, args.q_min, args.q_max)
+    ccd.to_json_file()
+    print(ccd)
+
+
 def plot_ccd(args: Namespace):
     plotter = CcdPlotter(args.ccd, spline_deg=args.spline_deg)
     plotter.construct_plot()
@@ -163,24 +174,21 @@ def plot_ccd(args: Namespace):
 
 
 def plot_eigenvalues(args: Namespace):
-    pass
-#     qs, orb_infos = [], []
-#     state = Path(args.dir).name
-#
-#     for d in glob(f'{args.dir}/disp_*'):
-#         try:
-#             orb_infos.append(loadfn(Path(d) / "band_edge_orbital_infos.json"))
-#             disp_ratio = float(d.split("_")[-1])
-#             qs.append(args.ccd.get_dQ_from_disp_ratio(state, disp_ratio))
-#         except FileNotFoundError:
-#             logger.info(f"band_edge_orbital_infos.json does not exist in {d}")
-#             pass
-#
-#     pcr: PerfectBandEdgeState = args.perfect_band_edge_state
-#     vbm, cbm = pcr.vbm_info.energy, pcr.cbm_info.energy
-#     eigval_plotter = EigenvaluePlotter(orb_infos, qs, vbm, cbm)
-#     eigval_plotter.construct_plot()
-#     eigval_plotter.plt.savefig(args.fig_name)
-#     eigval_plotter.plt.show()
+    qs, orb_infos = [], []
+
+    for d in glob(f'{args.dir}/disp_*'):
+        try:
+            orb_infos.append(loadfn(Path(d) / "band_edge_orbital_infos.json"))
+            imag_info: ImageStructureInfo = loadfn(Path(d) / "image_structure_info.json")
+            qs.append(imag_info.dQ)
+        except FileNotFoundError:
+            logger.info(f"band_edge_orbital_infos.json does not exist in {d}")
+            pass
+
+    vbm, cbm = args.ccd_init.vbm, args.ccd_init.cbm
+    eigval_plotter = EigenvaluePlotter(orb_infos, qs, vbm, cbm)
+    eigval_plotter.construct_plot()
+    eigval_plotter.plt.savefig(args.fig_name)
+    eigval_plotter.plt.show()
 
 
