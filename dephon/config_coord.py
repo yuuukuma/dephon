@@ -3,7 +3,6 @@
 from dataclasses import dataclass, field
 from typing import List, Dict
 
-import matplotlib
 import numpy as np
 from matplotlib import pyplot as plt
 from matplotlib.axes import Axes
@@ -16,6 +15,9 @@ from tabulate import tabulate
 from vise.util.logger import get_logger
 from vise.util.matplotlib import float_to_int_formatter
 from vise.util.mix_in import ToJsonFileMixIn
+from vise.util.structure_symmetrizer import num_sym_op
+
+from dephon.ele_phon_coupling import CaptureType
 
 logger = get_logger(__name__)
 
@@ -44,11 +46,16 @@ class MinimumPointInfo(MSONable):
     energy_correction: float
     initial_site_symm: str
     final_site_symm: str
-    site_symmetry_opt_num: int
 
     @property
     def corrected_energy(self):
         return self.energy + self.energy_correction
+
+    @property
+    def degeneracy_by_symmetry_reduction(self):
+        initial_num_sym_op = num_sym_op[self.initial_site_symm]
+        final_num_sym_op = num_sym_op[self.final_site_symm]
+        return initial_num_sym_op / final_num_sym_op
 
 
 @dataclass
@@ -60,7 +67,6 @@ class CcdInit(MSONable, ToJsonFileMixIn):
     cbm: float
     supercell_vbm: float
     supercell_cbm: float
-    multiplicity_by_symmetry_reduction: int = None
 
     def __post_init__(self):
         if abs(self.ground_state.charge - self.excited_state.charge) != 1:

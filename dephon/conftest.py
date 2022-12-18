@@ -3,7 +3,6 @@
 from pathlib import Path
 
 import pytest
-from pydefect.analyzer.defect_energy import DefectEnergy
 from pymatgen.core import Structure, Lattice
 
 from dephon.config_coord import ImageStructureInfo, CcdInit, Ccd, \
@@ -70,23 +69,26 @@ direct
 
 
 @pytest.fixture
-def ccd_init(excited_structure, ground_structure, intermediate_structure):
-    ground_state = MinimumPointInfo(charge=-1, structure=ground_structure,
-                                    energy=-2.0123456,
-                                    energy_correction=-2.1234567,
-                                    initial_site_symm="2mm",
-                                    final_site_symm="2m",
-                                    site_symmetry_opt_num=8)
+def minimum_point_info(ground_structure):
+    return MinimumPointInfo(charge=-1,
+                            structure=ground_structure,
+                            energy=-2.0123456,
+                            energy_correction=-2.1234567,
+                            initial_site_symm="4mm",
+                            final_site_symm="2/m")
+
+
+@pytest.fixture
+def ccd_init(minimum_point_info, excited_structure):
     excited_state = MinimumPointInfo(charge=0, structure=excited_structure,
                                      energy=-1.0123456,
                                      energy_correction=-1.1234567,
                                      initial_site_symm="2mm",
-                                     final_site_symm="2",
-                                     site_symmetry_opt_num=2)
+                                     final_site_symm="2")
 
     return CcdInit(
         name="Va_O",
-        ground_state=ground_state,
+        ground_state=minimum_point_info,
         excited_state=excited_state,
         vbm=1.0123456,
         cbm=2.0123456,

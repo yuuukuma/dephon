@@ -17,12 +17,13 @@ def test_get_dR():
     assert get_dR(structure1, structure2) == sqrt(1**2+2**2+3**2)
 
 
-def test_ccd_init_to_json_roundtrip(ccd_init, tmpdir):
+def test_json_roundtrip(ccd_init, tmpdir):
     assert_json_roundtrip(ccd_init, tmpdir)
-
-
-def test_ccd_to_json_roundtrip(ccd, tmpdir):
     assert_json_roundtrip(ccd, tmpdir)
+
+
+def test_minimum_point_info(minimum_point_info):
+    assert minimum_point_info.degeneracy_by_symmetry_reduction == 2
 
 
 def test_ccd_dQ(ccd_init):
