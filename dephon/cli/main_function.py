@@ -61,9 +61,15 @@ def make_ccd_init(args: Namespace):
 
     transfer_name = f"{ccd_init.excited_charge}to{ccd_init.ground_charge}"
     path = Path(f"cc/{ccd_init.name}_{transfer_name}")
-    path.mkdir(parents=True)
+    if path.exists() is False:
+        path.mkdir(parents=True)
 
-    ccd_init.to_json_file(str(path / "ccd_init.json"))
+    json_file = path / "ccd_init.json"
+    if json_file.exists():
+        logger.info(f"{json_file} exists. Remove it first to recreate it.")
+        return
+
+    ccd_init.to_json_file(json_file)
     print(ccd_init)
 
 
