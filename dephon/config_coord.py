@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 #  Copyright (c) 2022 Kumagai group.
+from copy import deepcopy
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import List, Dict
 
 import numpy as np
@@ -17,7 +19,7 @@ from vise.util.matplotlib import float_to_int_formatter
 from vise.util.mix_in import ToJsonFileMixIn
 from vise.util.structure_symmetrizer import num_sym_op
 
-from dephon.ele_phon_coupling import CaptureType
+from dephon.enum import Carrier
 
 logger = get_logger(__name__)
 
@@ -29,7 +31,7 @@ def get_dR(ground: Structure, excited: Structure) -> float:
         ground (Structure): Reference structure
         excited (Structure): Target structure
 
-    Note that constant deviation is removed by e.g., aligning the farthest atom.
+    Constant deviation needs to be removed by e.g., aligning the farthest atom.
 
     Returns:
         The Summed atomic displacement distance in float
@@ -42,10 +44,14 @@ def get_dR(ground: Structure, excited: Structure) -> float:
 class MinimumPointInfo(MSONable):
     charge: int
     structure: Structure
+    # formation energy at Ef=VBM and chemical potentials being standard states.
     energy: float
     energy_correction: float
-    initial_site_symm: str
-    final_site_symm: str
+    carriers: List[Carrier]
+    initial_site_symmetry: str
+    final_site_symmetry: str
+    # absolute dir
+    parsed_dir: str
 
     @property
     def corrected_energy(self):
@@ -53,9 +59,17 @@ class MinimumPointInfo(MSONable):
 
     @property
     def degeneracy_by_symmetry_reduction(self):
-        initial_num_sym_op = num_sym_op[self.initial_site_symm]
-        final_num_sym_op = num_sym_op[self.final_site_symm]
+        initial_num_sym_op = num_sym_op[self.initial_site_symmetry]
+        final_num_sym_op = num_sym_op[self.final_site_symmetry]
         return initial_num_sym_op / final_num_sym_op
+
+    @property
+    def carriers_str(self):
+        return "+".join([str(c) for c in self.carriers])
+
+    @property
+    def dir_path(self):
+        return Path(self.parsed_dir)
 
 
 @dataclass
@@ -68,57 +82,60 @@ class CcdInit(MSONable, ToJsonFileMixIn):
     supercell_vbm: float
     supercell_cbm: float
 
+    # TODO: add transition_level property and show it in __str__
+
     def __post_init__(self):
         if abs(self.ground_state.charge - self.excited_state.charge) != 1:
-            logger.warning("The charge difference is not 1. You must know what"
-                           "you are doing.")
+            logger.warning("Charge difference between ground and excited states"
+                           " is not 1. You must know what you are doing.")
+        self.ground_state_w_pn = deepcopy(self.ground_state)
+        self.ground_state_w_pn.carriers = [Carrier.hole, Carrier.electron]
+        self.ground_state_w_pn.energy += self.cbm - self.vbm
 
     @property
-    def ground_structure(self):
-        return self.ground_state.structure
+    def trap_charge_by_excited_state(self):
+        return - (self.excited_state.charge - self.ground_state.charge)
 
     @property
-    def excited_structure(self):
-        return self.excited_state.structure
+    def minority_carrier(self) -> Carrier:
+        return self.excited_state.carriers[0]
 
     @property
-    def ground_charge(self):
-        return self.ground_state.charge
-
-    @property
-    def excited_charge(self):
-        return self.excited_state.charge
-
-    @property
-    def ground_corrected_energy(self):
-        return self.ground_state.corrected_energy
-
-    @property
-    def excited_corrected_energy(self):
-        return self.excited_state.corrected_energy
+    def semiconductor_type(self) -> str:
+        if self.trap_charge_by_excited_state == 1:
+            return "p-type"
+        else:
+            return "n-type"
 
     @property
     def dQ(self):
-        return get_dQ(self.excited_structure, self.ground_structure)
-
-    @property
-    def zero_phonon_line(self):
-        return self.excited_corrected_energy - self.ground_corrected_energy
+        return get_dQ(self.excited_state.structure, self.ground_state.structure)
 
     @property
     def dR(self):
-        return get_dR(self.excited_structure, self.ground_structure)
+        return get_dR(self.excited_state.structure, self.ground_state.structure)
 
     @property
     def modal_mass(self):
         return (self.dQ / self.dR) ** 2
 
-    @property
-    def charge_change(self):
-        return self.excited_charge - self.ground_charge
+    # @property
+    # def zero_phonon_line(self):
+    #     e_diff = self.excited_energy_at_Ef - self.ground_energy_at_Ef
+    #     if self.trapped_carrier_charge == 1:
+    #         # electron capture
+    #         carrier_energy = self.cbm
+    #     elif self.trapped_carrier_charge == -1:
+    #         # hole capture
+    #         carrier_energy = -self.vbm
+    #     else:
+    #         raise AssertionError(f"Charge diff {self.trapped_carrier_charge} is weird.")
+
+        # return e_diff + carrier_energy
 
     def __str__(self):
-        result = [f"name: {self.name}"]
+        result = [f"name: {self.name}",
+                  f"semiconductor type:  {self.semiconductor_type}"]
         table = [["vbm", self.vbm, "supercell vbm", self.supercell_vbm],
                  ["cbm", self.cbm, "supercell cbm", self.supercell_cbm],
                  ["dQ (amu^0.5 Å)", self.dQ],
@@ -128,18 +145,27 @@ class CcdInit(MSONable, ToJsonFileMixIn):
 
         result.append("-" * 60)
 
-        headers = ["state", "initial symm", "final symm", "energy",
-                   "correction", "corrected energy"]
+        headers = ["q", "carrier", "initial symm", "final symm", "energy",
+                   "correction", "corrected energy", "ZPL"]
         table = []
-        for s in [self.excited_state, self.ground_state]:
-            state_str = f"{self.name}_{s.charge}"
-            table.append([state_str, s.initial_site_symm, s.final_site_symm,
-                          s.energy, s.energy_correction, s.corrected_energy])
+
+        last_energy = None
+
+        for state in [self.ground_state_w_pn,
+                      self.excited_state,
+                      self.ground_state]:
+            table.append(
+                [state.charge, state.carriers_str, state.initial_site_symmetry,
+                 state.final_site_symmetry, state.energy,
+                 state.energy_correction, state.corrected_energy])
+            if last_energy:
+                table[-1].append(last_energy - state.corrected_energy)
+            last_energy = state.corrected_energy
 
         result.append(
             tabulate(table, tablefmt="plain", headers=headers, floatfmt=".3f",
                      stralign="center"))
-        result.append(f"ZPL: {self.zero_phonon_line:.3f}")
+        # result.append(f"ZPL: {self.zero_phonon_line:.3f}")
         return "\n".join(result)
 
 

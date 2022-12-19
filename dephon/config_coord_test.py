@@ -4,10 +4,12 @@ from math import sqrt
 
 import pytest
 from pymatgen.core import Element, Structure, Lattice
-from vise.tests.helpers.assertion import assert_json_roundtrip
+from vise.tests.helpers.assertion import assert_json_roundtrip, \
+    assert_dataclass_almost_equal
 
 from dephon.config_coord import Ccd, ImageStructureInfo, CcdPlotter, \
-    get_dR
+    get_dR, CcdInit, MinimumPointInfo
+from dephon.enum import Carrier
 
 
 def test_get_dR():
@@ -17,34 +19,118 @@ def test_get_dR():
     assert get_dR(structure1, structure2) == sqrt(1**2+2**2+3**2)
 
 
-def test_json_roundtrip(ccd_init, tmpdir):
-    assert_json_roundtrip(ccd_init, tmpdir)
-    assert_json_roundtrip(ccd, tmpdir)
+@pytest.fixture
+def minimum_point_info(ground_structure):
+    return MinimumPointInfo(charge=-1,
+                            structure=ground_structure,
+                            energy=10.0,
+                            energy_correction=1.0,
+                            initial_site_symmetry="4mm",
+                            final_site_symmetry="2/m",
+                            carriers=[Carrier.hole],
+                            parsed_dir="/path/to/min_point")
+
+
+band_edges = dict(vbm=1.0, cbm=2.0, supercell_vbm=1.1, supercell_cbm=1.9)
+
+
+@pytest.fixture
+def ccd_init_p_capture(ground_structure, excited_structure):
+    ground_state = MinimumPointInfo(charge=0,
+                                    structure=ground_structure,
+                                    energy=11.0,
+                                    energy_correction=-1.0,
+                                    initial_site_symmetry="2mm",
+                                    final_site_symmetry="2",
+                                    carriers=[],
+                                    parsed_dir="/path/to/ground")
+    excited_state = MinimumPointInfo(charge=-1,
+                                     structure=excited_structure,
+                                     energy=12.0,
+                                     energy_correction=-1.0,
+                                     initial_site_symmetry="2mm",
+                                     final_site_symmetry="2",
+                                     carriers=[Carrier.hole],
+                                     parsed_dir="/path/to/excited")
+    # transition level = 1.0 from VBM
+    return CcdInit(name="Va_O", ground_state=ground_state,
+                   excited_state=excited_state, **band_edges)
+
+
+@pytest.fixture
+def ccd_init_n_capture(ground_structure, excited_structure):
+    ground_state = MinimumPointInfo(charge=0,
+                                    structure=ground_structure,
+                                    energy=11.0,
+                                    energy_correction=-1.0,
+                                    initial_site_symmetry="2mm",
+                                    final_site_symmetry="2",
+                                    carriers=[],
+                                    parsed_dir="/path/to/ground")
+    excited_state = MinimumPointInfo(charge=1,
+                                     structure=excited_structure,
+                                     energy=12.0,
+                                     energy_correction=-1.0,
+                                     initial_site_symmetry="2mm",
+                                     final_site_symmetry="2",
+                                     carriers=[Carrier.electron],
+                                     parsed_dir="/path/to/excited")
+    # transition level = -1.0 from CBM
+    return CcdInit(name="Va_O", ground_state=ground_state,
+                   excited_state=excited_state, **band_edges)
+
+
+def test_json_roundtrip(ccd_init_p_capture, tmpdir):
+    assert_json_roundtrip(ccd_init_p_capture, tmpdir)
 
 
 def test_minimum_point_info(minimum_point_info):
     assert minimum_point_info.degeneracy_by_symmetry_reduction == 2
 
 
-def test_ccd_dQ(ccd_init):
+def test_ccd_init_ground_state_w_pn(ccd_init_p_capture, ground_structure):
+    actual = ccd_init_p_capture.ground_state_w_pn
+    expected = MinimumPointInfo(charge=0,
+                                structure=ground_structure,
+                                energy=12.0,
+                                energy_correction=-1.0,
+                                initial_site_symmetry="2mm",
+                                final_site_symmetry="2",
+                                carriers=[Carrier.hole, Carrier.electron],
+                                parsed_dir="/path/to/ground")
+    assert_dataclass_almost_equal(actual, expected)
+
+
+def test_ccd_init_dQ(ccd_init_p_capture):
     expected = sqrt((0.1*10)**2*6 * Element.H.atomic_mass)
-    assert ccd_init.dQ == pytest.approx(expected)
+    assert ccd_init_p_capture.dQ == pytest.approx(expected)
 
 
-def test_ccd_string(ccd_init):
-    actual = ccd_init.__str__()
-    print(ccd_init)
+def test_ccd_init_minority_carrier(ccd_init_p_capture, ccd_init_n_capture):
+    assert ccd_init_p_capture.minority_carrier == Carrier.hole
+    assert ccd_init_n_capture.minority_carrier == Carrier.electron
+
+
+def test_ccd_init_semiconductor_type(ccd_init_p_capture, ccd_init_n_capture):
+    assert ccd_init_p_capture.semiconductor_type == "p-type"
+    assert ccd_init_n_capture.semiconductor_type == "n-type"
+
+
+def test_ccd_string(ccd_init_p_capture):
+    actual = ccd_init_p_capture.__str__()
+    print(ccd_init_p_capture)
     expected = """name: Va_O
-vbm             1.012  supercell vbm  1.102
-cbm             2.012  supercell cbm  1.912
+semiconductor type:  p-type
+vbm             1.000  supercell vbm  1.100
+cbm             2.000  supercell cbm  1.900
 dQ (amu^0.5 Å)  2.459
 dR (Å)          2.449
 M (amu)         1.008
 ------------------------------------------------------------
- state    initial symm    final symm     energy    correction    corrected energy
-Va_O_0        2mm             2          -1.012        -1.123              -2.136
-Va_O_-1       2mm             2m         -2.012        -2.123              -4.136
-ZPL: 2.000"""
+  q   carrier    initial symm     final symm    energy    correction    corrected energy    ZPL
+  0     h+e          2mm                   2    12.000        -1.000              11.000
+ -1      h           2mm                   2    12.000        -1.000              11.000  0.000
+  0                  2mm                   2    11.000        -1.000              10.000  1.000"""
     assert actual == expected
 
 
