@@ -41,7 +41,7 @@ def test_main_make_dirs_wo_args(mocker):
     mock_ccd_init = mocker.Mock(spec=CcdInit, autospec=True)
 
     def side_effect(filename):
-        if filename == "ccd_init.json":
+        if filename == "ccd_init_p_capture.json":
             return mock_ccd_init
         else:
             raise ValueError
@@ -62,7 +62,7 @@ def test_main_make_ccd_wo_args(mocker):
     mock_ccd_init = mocker.Mock(spec=CcdInit, autospec=True)
 
     def side_effect(filename):
-        if filename == "ccd_init.json":
+        if filename == "ccd_init_p_capture.json":
             return mock_ccd_init
         else:
             raise ValueError

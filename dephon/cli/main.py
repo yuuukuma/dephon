@@ -9,9 +9,10 @@ from monty.serialization import loadfn
 from pydefect.cli.main import add_sub_parser
 from pymatgen.io.vasp.inputs import UnknownPotcarWarning
 
-from dephon.version import __version__
 from dephon.cli.main_function import make_ccd_init, make_ccd, \
-    make_ccd_dirs, plot_ccd, plot_eigenvalues, set_fitting_q_range
+    make_ccd_dirs, plot_ccd, plot_eigenvalues, set_fitting_q_range, \
+    make_wswq_dirs
+from dephon.version import __version__
 
 warnings.simplefilter('ignore', UnknownPotcarWarning)
 
@@ -57,12 +58,12 @@ def parse_args_main(args):
         "--ccd_init", type=loadfn, default="ccd_init.json")
     parser_add_ccd_dirs.add_argument(
         "-egr", "--e_to_g_div_ratios", type=float, nargs="+",
-        default=[-0.4, -0.2, 0.2, 0.4, 0.6, 0.8],
+        default=[-0.4, -0.2, 0.0, 0.2, 0.4, 0.6, 0.8],
         help="Dividing ratios from excited state to ground state structures."
              "Thus, 1.0 means ground state structure")
     parser_add_ccd_dirs.add_argument(
         "-ger", "--g_to_e_div_ratios", type=float, nargs="+",
-        default=[-0.4, -0.2, 0.2, 0.4, 0.6, 0.8],
+        default=[-0.4, -0.2, 0.0, 0.2, 0.4, 0.6, 0.8],
         help="Dividing ratios from ground state to excited state structures.")
     parser_add_ccd_dirs.add_argument(
         "-d", "--calc_dir", type=Path, default=Path.cwd(),
@@ -143,6 +144,22 @@ def parse_args_main(args):
         "-pbes", "--perfect_band_edge_state", type=loadfn,
         help="Path to the perfect_band_edge_state.json.")
     parser_plot_eigenvalues.set_defaults(func=plot_eigenvalues)
+
+    # -- make_wswq_dirs -----------------------------------
+    parser_make_wswq_dirs = subparsers.add_parser(
+        name="make_wswq_dirs",
+        description="Make directories for calculating WSWQ files.",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+        aliases=['mwd'])
+
+    parser_make_wswq_dirs.add_argument(
+        "--ccd_init", type=loadfn, default="ccd_init.json")
+    parser_make_wswq_dirs.add_argument(
+        "--ground_dirs", type=Path, nargs="+", default=[])
+    parser_make_wswq_dirs.add_argument(
+        "--excited_dirs", type=Path, nargs="+", default=[])
+
+    parser_make_wswq_dirs.set_defaults(func=make_wswq_dirs)
     # ------------------------------------------------------------------------
     return parser.parse_args(args)
 

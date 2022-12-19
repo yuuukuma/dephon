@@ -1,75 +1,73 @@
 # -*- coding: utf-8 -*-
 #  Copyright (c) 2022 Kumagai group.
-import os
-import shutil
 from argparse import Namespace
+from math import sqrt
 from pathlib import Path
 
-import pytest
 from monty.serialization import loadfn
-from pydefect.analyzer.band_edge_states import PerfectBandEdgeState, EdgeInfo, \
-    OrbitalInfo
 from pydefect.analyzer.calc_results import CalcResults
-from pydefect.analyzer.defect_energy import DefectEnergy
 from pydefect.analyzer.unitcell import Unitcell
-from pydefect.corrections.efnv_correction import ExtendedFnvCorrection
-from pymatgen.core import Structure
+from pymatgen.core import Structure, Element
+from vise.input_set.incar import ViseIncar
 from vise.input_set.prior_info import PriorInfo
 
 from dephon.cli.main_function import make_ccd_init, make_ccd, plot_ccd, \
-    make_ccd_dirs
-from dephon.config_coord import Ccd, CcdInit, ImageStructureInfo
+    make_ccd_dirs, make_wswq_dirs
+from dephon.config_coord import Ccd, CcdInit, ImageStructureInfo, \
+    MinimumPointInfo
 
 
 def test_make_ccd_init(test_files, tmpdir, mocker):
     tmpdir.chdir()
-    unitcell = mocker.Mock(spec=Unitcell, autospec=True)
-    unitcell.vbm = 0.0
-    unitcell.cbm = 10.0
-
-    p_band_edge_state = mocker.Mock(spec=PerfectBandEdgeState, autospec=True)
-    p_band_edge_state.vbm_info = EdgeInfo(1, (0.0, 0.0, 0.0),
-                                          OrbitalInfo(2.0, {}, 0.0))
-    p_band_edge_state.cbm_info = EdgeInfo(1, (0.0, 0.0, 0.0),
-                                          OrbitalInfo(8.0, {}, 0.0))
-
     _dir = test_files / "Na3AgO2"
 
-    args = Namespace(excited_dir=_dir / "Va_O1_0",
-                     ground_dir=_dir / "Va_O1_1",
-                     unitcell=unitcell,
-                     p_state=p_band_edge_state)
+    args = Namespace(excited_dir=_dir / "Va_O1_1",
+                     ground_dir=_dir / "Va_O1_0",
+                     unitcell=Unitcell.from_yaml(_dir / "unitcell.yaml"),
+                     p_state=loadfn(_dir / "perfect_band_edge_state.json"))
     make_ccd_init(args)
-    actual = loadfn("cc/Va_O1_0to1/ccd_init.json").__str__()
+    actual = loadfn("cc/Va_O1_1to0/ccd_init.json").__str__()
     expected = """name: Va_O1
-vbm              0.000  supercell vbm  2.000
-cbm             10.000  supercell cbm  8.000
+semiconductor type:  n-type
+vbm              1.740  supercell vbm  1.615
+cbm              4.705  supercell cbm  4.965
 dQ (amu^0.5 Å)   2.242
 dR (Å)           0.322
 M (amu)         48.367
 ------------------------------------------------------------
- state    initial symm    final symm     energy    correction    corrected energy
-Va_O1_0        m              m        -458.348         0.000            -458.348
-Va_O1_1        m              m        -461.490         0.239            -461.251
-ZPL: 2.904"""
+  q   carrier    initial symm    final symm     energy    correction    corrected energy    ZPL
+  0     h+e           m              m           6.818         0.000               6.818
+  1      e            m              m           5.415         0.239               5.654  1.164
+  0                   m              m           3.853         0.000               3.853  1.801"""
     assert actual == expected
 
 
-def test_make_ccd_dirs(tmpdir, mocker, ground_structure, excited_structure, 
+def test_make_ccd_dirs(tmpdir, ground_structure, excited_structure,
                        intermediate_structure):
     tmpdir.chdir()
-    ccd_init = mocker.Mock(spec=CcdInit, autospec=True)
-    ccd_init.dQ = 10.0
-    ccd_init.ground_structure = ground_structure
-    ccd_init.excited_structure = excited_structure
-    ccd_init.ground_energy_correction = 100.0
-    ccd_init.excited_energy_correction = 200.0
+    ccd_init = CcdInit(
+        name="test",
+        ground_state=MinimumPointInfo(charge=1,
+                                      structure=ground_structure,
+                                      energy=10.0,
+                                      energy_correction=200.0,
+                                      carriers=[],
+                                      initial_site_symmetry="",
+                                      final_site_symmetry="",
+                                      parsed_dir=""),
+        excited_state=MinimumPointInfo(charge=0,
+                                       structure=excited_structure,
+                                       energy=10.0,
+                                       energy_correction=200.0,
+                                       carriers=[],
+                                       initial_site_symmetry="",
+                                       final_site_symmetry="",
+                                       parsed_dir=""),
+        vbm=-100.0, cbm=100.0, supercell_vbm=-100.0, supercell_cbm=100.0)
 
-    ccd_init.excited_charge = -1
-    ccd_init.ground_charge = 0
+    dQ = sqrt((0.1*10)**2*6 * Element.H.atomic_mass)
 
     Path("test").mkdir()
-
     args = Namespace(ccd_init=ccd_init,
                      e_to_g_div_ratios=[0.5, 1.0],
                      g_to_e_div_ratios=[1.0],
@@ -80,11 +78,12 @@ def test_make_ccd_dirs(tmpdir, mocker, ground_structure, excited_structure,
     assert actual == intermediate_structure
 
     actual = PriorInfo.load_yaml("excited/disp_0.5/prior_info.yaml")
-    expected = PriorInfo(charge=-1)
+    expected = PriorInfo(charge=0)
     assert actual == expected
 
     actual = loadfn("excited/disp_0.5/image_structure_info.json")
-    expected = ImageStructureInfo(dQ=5.0, correction=200.0, correction_type="eFNV")
+    expected = ImageStructureInfo(dQ=1.2295974951178128, correction=200.0,
+                                  correction_type="eFNV")
     assert actual == expected
 
     actual = Structure.from_file("ground/disp_1.0/POSCAR")
@@ -150,11 +149,58 @@ def test_plot_ccd(ccd, tmpdir):
     plot_ccd(args)
 
 
-# def test_plot_eigenvalues(tmpdir, mocker, ground_structure):
-#     args = Namespace(dirs=["a"],
-#                      ccd=)
+def test_make_wswq_dirs(tmpdir, mocker):
+
+    print(tmpdir)
+    tmpdir.chdir()
+
+    for state in ["ground", "excited"]:
+        Path(f"{state}_original").mkdir(parents=True)
+        Path(f"{state}/disp_-0.2").mkdir(parents=True)
+        Path(f"{state}_original/WAVECAR").write_text("wave")
+        Path(f"{state}/disp_-0.2/KPOINTS").write_text("kpoints")
+        Path(f"{state}/disp_-0.2/POSCAR").write_text("poscar")
+        Path(f"{state}/disp_-0.2/POTCAR").write_text("potcar")
+        Path(f"{state}/disp_-0.2/WAVECAR").write_text("qqq")
+
+        incar = ViseIncar({"NSW": 100})
+        incar.write_file(Path(f"{state}/disp_-0.2/INCAR"))
 
 
+    Path(f"excited/disp_-0.2/wswq").mkdir()
+
+    ccd_init = mocker.MagicMock()
+    ccd_init.ground_state.dir_path = Path(tmpdir/"ground_original")
+    ccd_init.excited_state.dir_path = Path(tmpdir/"excited_original")
+
+    args = Namespace(ground_dirs=[Path(f"ground/disp_-0.2")],
+                     excited_dirs=[Path(f"excited/disp_-0.2")],
+                     ccd_init=ccd_init)
+    make_wswq_dirs(args)
+
+    for state in ["ground"]:
+        wswq_dir = Path(f"{state}/disp_-0.2/wswq/")
+        assert Path(wswq_dir/"KPOINTS").read_text() == "kpoints"
+        assert Path(wswq_dir/"POSCAR").read_text() == "poscar"
+        assert Path(wswq_dir/"POTCAR").read_text() == "potcar"
+        assert Path(wswq_dir/"WAVECAR.qqq").read_text() == "qqq"
+        assert Path(wswq_dir/"WAVECAR").read_text() == "wave"
+
+        actual_incar = ViseIncar.from_file(wswq_dir/"INCAR")
+        expected_incar = ViseIncar({"NSW": 100,
+                                    "ALGO": "None",
+                                    "LWSWQ": True,
+                                    "NELM": 1,
+                                    "LWAVE": False})
+        assert actual_incar == expected_incar
+
+        assert Path(wswq_dir/"KPOINTS").is_symlink()
+        assert Path(wswq_dir/"POSCAR").is_symlink()
+        assert Path(wswq_dir/"POTCAR").is_symlink()
+        assert Path(wswq_dir/"WAVECAR.qqq").is_symlink()
+        assert Path(wswq_dir/"WAVECAR").is_symlink()
+
+    assert Path("excited/disp_-0.2/wswq/KPOINTS").exists() is False
 
 
 """

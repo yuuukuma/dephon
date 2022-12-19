@@ -14,17 +14,19 @@ from pydefect.analyzer.defect_energy import DefectEnergyInfo
 from pydefect.analyzer.defect_structure_info import DefectStructureInfo
 from pydefect.cli.main_functions import get_calc_results
 from pydefect.cli.main_tools import parse_dirs
+from vise.input_set.incar import ViseIncar
+from vise.util.file_transfer import FileLink
 from vise.util.logger import get_logger
-from vise.util.structure_symmetrizer import num_sym_op
 
 from dephon.config_coord import ImageStructureInfo, Ccd, CcdPlotter, CcdInit, \
     MinimumPointInfo
+from dephon.enum import Carrier
 from dephon.plot_eigenvalues import EigenvaluePlotter
 
 logger = get_logger(__name__)
 
 
-def _min_info_from_dir(_dir):
+def _min_info_from_dir(_dir: Path):
     energy_info = DefectEnergyInfo.from_yaml(_dir / "defect_energy_info.yaml")
     calc_results: CalcResults = loadfn(_dir / "calc_results.json")
     defect_structure_info: DefectStructureInfo \
@@ -32,11 +34,12 @@ def _min_info_from_dir(_dir):
     min_point_info = MinimumPointInfo(
         charge=energy_info.charge,
         structure=calc_results.structure,
-        energy=calc_results.energy,
+        energy=energy_info.defect_energy.formation_energy,
         energy_correction=energy_info.defect_energy.total_correction,
-        initial_site_symm=defect_structure_info.initial_site_sym,
-        final_site_symm=defect_structure_info.final_site_sym,
-        site_symmetry_opt_num=num_sym_op[defect_structure_info.final_site_sym])
+        carriers=[],
+        initial_site_symmetry=defect_structure_info.initial_site_sym,
+        final_site_symmetry=defect_structure_info.final_site_sym,
+        parsed_dir=str(_dir.absolute()))
     return min_point_info, energy_info.name
 
 
@@ -51,6 +54,13 @@ def make_ccd_init(args: Namespace):
     excited_state, e_name = _min_info_from_dir(args.excited_dir)
     _check_ground_exited_names(e_name, g_name)
 
+    if ground_state.charge - excited_state.charge == -1:
+        excited_state.carriers.append(Carrier.electron)
+        excited_state.energy += args.unitcell.cbm - args.unitcell.vbm
+
+    elif ground_state.charge - excited_state.charge == 1:
+        excited_state.carriers.append(Carrier.hole)
+
     ccd_init = CcdInit(name=g_name,
                        ground_state=ground_state,
                        excited_state=excited_state,
@@ -59,7 +69,7 @@ def make_ccd_init(args: Namespace):
                        supercell_vbm=args.p_state.vbm_info.energy,
                        supercell_cbm=args.p_state.cbm_info.energy)
 
-    transfer_name = f"{ccd_init.excited_charge}to{ccd_init.ground_charge}"
+    transfer_name = f"{excited_state.charge}to{ground_state.charge}"
     path = Path(f"cc/{ccd_init.name}_{transfer_name}")
     if path.exists() is False:
         path.mkdir(parents=True)
@@ -75,7 +85,8 @@ def make_ccd_init(args: Namespace):
 
 def make_ccd_dirs(args: Namespace):
     os.chdir(args.calc_dir)
-    gs, es = args.ccd_init.ground_structure, args.ccd_init.excited_structure
+    gs = args.ccd_init.ground_state.structure
+    es = args.ccd_init.excited_state.structure
     e_to_g = es.interpolate(gs, nimages=args.e_to_g_div_ratios)
     g_to_e = gs.interpolate(es, nimages=args.g_to_e_div_ratios)
 
@@ -87,17 +98,17 @@ def make_ccd_dirs(args: Namespace):
              ("ground", args.g_to_e_div_ratios, g_to_e, g_dQs)]:
 
         if state == "ground":
-            charge = args.ccd_init.ground_charge
-            correction = args.ccd_init.ground_energy_correction
+            charge = args.ccd_init.ground_state.charge
+            correction = args.ccd_init.ground_state.energy_correction
         else:
-            charge = args.ccd_init.excited_charge
-            correction = args.ccd_init.excited_energy_correction
+            charge = args.ccd_init.excited_state.charge
+            correction = args.ccd_init.excited_state.energy_correction
 
         for ratio, structure, dQ in zip(ratios, structures, dQs):
-            _make_dir(charge, state, ratio, structure, dQ, correction)
+            _make_ccd_dir(charge, state, ratio, structure, dQ, correction)
 
 
-def _make_dir(charge, state, ratio, structure, dQ, correction):
+def _make_ccd_dir(charge, state, ratio, structure, dQ, correction):
     dir_ = Path(state) / f"disp_{ratio}"
     try:
         dir_.mkdir(parents=True, exist_ok=True)
@@ -198,3 +209,29 @@ def plot_eigenvalues(args: Namespace):
     eigval_plotter.plt.show()
 
 
+def make_wswq_dirs(args: Namespace):
+    for dir_ in args.ground_dirs:
+        _make_wswq_dir(dir_, args.ccd_init.ground_state.dir_path)
+    for dir_ in args.excited_dirs:
+        _make_wswq_dir(dir_, args.ccd_init.excited_state.dir_path)
+
+
+def _make_wswq_dir(dir_, original_dir):
+    wswq_dir = (dir_ / "wswq")
+    if wswq_dir.exists():
+        logger.info(f"Directory {wswq_dir} exists, so skip creating it.")
+        return
+
+    wswq_dir.mkdir()
+    logger.info(f"Directory {wswq_dir} was created.")
+
+    for f_name in ["KPOINTS", "POSCAR", "POTCAR"]:
+        FileLink((dir_/f_name).absolute()).transfer(wswq_dir)
+
+    incar = ViseIncar.from_file(dir_/"INCAR")
+    incar.update({"ALGO": "None", "LWSWQ": True, "NELM": 1, "LWAVE": False})
+    incar.write_file(Path(wswq_dir/"INCAR"))
+
+    os.symlink((dir_/"WAVECAR").absolute(), (wswq_dir/"WAVECAR.qqq"))
+
+    os.symlink((original_dir/"WAVECAR").absolute(), (wswq_dir/"WAVECAR"))
