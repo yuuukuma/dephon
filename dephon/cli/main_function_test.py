@@ -121,12 +121,12 @@ def test_make_ccd(tmpdir, mocker, ground_structure):
                                        magnetization=0.0, potentials=[0.0])
             calc_results.to_json_file(str(disp_dir / "calc_results.json"))
 
-    ccd_init = mocker.Mock(spec=CcdInit, autospec=True)
+    ccd_init = mocker.MagicMock()
     ccd_init.name = "test"
     ccd_init.vbm = 1.0
     ccd_init.cbm = 2.0
-    ccd_init.ground_charge = 1
-    ccd_init.excited_charge = 0
+    ccd_init.ground_state.charge = 1
+    ccd_init.excited_state.charge = 0
 
     args = Namespace(ccd_init=ccd_init,
                      ground_dirs=[Path("ground/disp_-0.2"), Path("ground/disp_0.2")],

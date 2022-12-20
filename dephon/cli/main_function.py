@@ -145,8 +145,8 @@ def make_ccd(args: Namespace):
     ground_image_infos = parse_dirs(args.ground_dirs, _inner, verbose=True)
     excited_image_infos = parse_dirs(args.excited_dirs, _inner, verbose=True)
 
-    ground_charge = args.ccd_init.ground_charge
-    excited_charge = args.ccd_init.excited_charge
+    ground_charge = args.ccd_init.ground_state.charge
+    excited_charge = args.ccd_init.excited_state.charge
 
     if excited_charge - ground_charge == -1:
         ref = args.ccd_init.vbm
