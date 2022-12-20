@@ -86,8 +86,8 @@ def make_ccd_dirs(args: Namespace):
     e_to_g = es.interpolate(gs, nimages=args.e_to_g_div_ratios)
     g_to_e = gs.interpolate(es, nimages=args.g_to_e_div_ratios)
 
-    e_dQs = [args.ccd_init.dQ * r for r in args.e_to_g_div_ratios]
-    g_dQs = [args.ccd_init.dQ * (1.0 - r) for r in args.g_to_e_div_ratios]
+    e_dQs = [args.ccd_init.dQ * (1.0 - r) for r in args.e_to_g_div_ratios]
+    g_dQs = [args.ccd_init.dQ * r for r in args.g_to_e_div_ratios]
 
     for state, ratios, structures, dQs in \
             [("excited", args.e_to_g_div_ratios, e_to_g, e_dQs),
@@ -225,7 +225,7 @@ def _make_wswq_dir(dir_, original_dir):
         FileLink((dir_/f_name).absolute()).transfer(wswq_dir)
 
     incar = ViseIncar.from_file(dir_/"INCAR")
-    incar.update({"ALGO": "None", "LWSWQ": True, "NELM": 1, "LWAVE": False})
+    incar.update({"ALGO": "None", "LWSWQ": True, "NELM": 1, "LWAVE": False, "LORBIT": None})
     incar.write_file(Path(wswq_dir/"INCAR"))
 
     os.symlink((dir_/"WAVECAR").absolute(), (wswq_dir/"WAVECAR.qqq"))

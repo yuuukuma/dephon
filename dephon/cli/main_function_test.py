@@ -85,6 +85,11 @@ def test_make_ccd_dirs(tmpdir, ground_structure, excited_structure,
                                   correction_type="eFNV")
     assert actual == expected
 
+    actual = loadfn("excited/disp_1.0/image_structure_info.json")
+    expected = ImageStructureInfo(dQ=0, correction=200.0,
+                                  correction_type="eFNV")
+    assert actual == expected
+
     actual = Structure.from_file("ground/disp_1.0/POSCAR")
     assert actual == excited_structure
 
@@ -190,7 +195,8 @@ def test_make_wswq_dirs(tmpdir, mocker):
                                     "ALGO": "None",
                                     "LWSWQ": True,
                                     "NELM": 1,
-                                    "LWAVE": False})
+                                    "LWAVE": False,
+                                    "LORBIT": "None"})
         assert actual_incar == expected_incar
 
         assert Path(wswq_dir/"KPOINTS").is_symlink()
