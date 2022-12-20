@@ -26,7 +26,7 @@ from dephon.plot_eigenvalues import EigenvaluePlotter
 logger = get_logger(__name__)
 
 
-def _min_info_from_dir(_dir: Path):
+def _make_min_point_info_from_dir(_dir: Path):
     energy_info = DefectEnergyInfo.from_yaml(_dir / "defect_energy_info.yaml")
     calc_results: CalcResults = loadfn(_dir / "calc_results.json")
     defect_structure_info: DefectStructureInfo \
@@ -43,16 +43,9 @@ def _min_info_from_dir(_dir: Path):
     return min_point_info, energy_info.name
 
 
-def _check_ground_exited_names(e_name, g_name):
-    if g_name != e_name:
-        logger.warning("The names of ground and excited states are "
-                       f"{g_name} and {e_name}. Here, {g_name} is used.")
-
-
 def make_ccd_init(args: Namespace):
-    ground_state, g_name = _min_info_from_dir(args.ground_dir)
-    excited_state, e_name = _min_info_from_dir(args.excited_dir)
-    _check_ground_exited_names(e_name, g_name)
+    ground_state, g_name = _make_min_point_info_from_dir(args.ground_dir)
+    excited_state, e_name = _make_min_point_info_from_dir(args.excited_dir)
 
     if ground_state.charge - excited_state.charge == -1:
         excited_state.carriers.append(Carrier.electron)
@@ -61,6 +54,9 @@ def make_ccd_init(args: Namespace):
     elif ground_state.charge - excited_state.charge == 1:
         excited_state.carriers.append(Carrier.hole)
 
+    if g_name != e_name:
+        logger.warning("The names of ground and excited states are "
+                       f"{g_name} and {e_name}. Here, {g_name} is used.")
     ccd_init = CcdInit(name=g_name,
                        ground_state=ground_state,
                        excited_state=excited_state,

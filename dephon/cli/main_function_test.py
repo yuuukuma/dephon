@@ -1,13 +1,12 @@
 # -*- coding: utf-8 -*-
 #  Copyright (c) 2022 Kumagai group.
 from argparse import Namespace
-from math import sqrt
 from pathlib import Path
 
 from monty.serialization import loadfn
 from pydefect.analyzer.calc_results import CalcResults
 from pydefect.analyzer.unitcell import Unitcell
-from pymatgen.core import Structure, Element
+from pymatgen.core import Structure
 from vise.input_set.incar import ViseIncar
 from vise.input_set.prior_info import PriorInfo
 
@@ -17,14 +16,14 @@ from dephon.config_coord import Ccd, CcdInit, ImageStructureInfo, \
     MinimumPointInfo
 
 
-def test_make_ccd_init(test_files, tmpdir, mocker):
+def test_make_ccd_init(test_files, tmpdir):
     tmpdir.chdir()
-    _dir = test_files / "Na3AgO2"
+    dir_ = test_files / "Na3AgO2"
 
-    args = Namespace(excited_dir=_dir / "Va_O1_1",
-                     ground_dir=_dir / "Va_O1_0",
-                     unitcell=Unitcell.from_yaml(_dir / "unitcell.yaml"),
-                     p_state=loadfn(_dir / "perfect_band_edge_state.json"))
+    args = Namespace(excited_dir=dir_ / "Va_O1_1",
+                     ground_dir=dir_ / "Va_O1_0",
+                     unitcell=Unitcell.from_yaml(dir_ / "unitcell.yaml"),
+                     p_state=loadfn(dir_ / "perfect_band_edge_state.json"))
     make_ccd_init(args)
     actual = loadfn("cc/Va_O1_1to0/ccd_init.json").__str__()
     expected = """name: Va_O1
@@ -65,8 +64,6 @@ def test_make_ccd_dirs(tmpdir, ground_structure, excited_structure,
                                        parsed_dir=""),
         vbm=-100.0, cbm=100.0, supercell_vbm=-100.0, supercell_cbm=100.0)
 
-    dQ = sqrt((0.1*10)**2*6 * Element.H.atomic_mass)
-
     Path("test").mkdir()
     args = Namespace(ccd_init=ccd_init,
                      e_to_g_div_ratios=[0.5, 1.0],
@@ -81,6 +78,8 @@ def test_make_ccd_dirs(tmpdir, ground_structure, excited_structure,
     expected = PriorInfo(charge=0)
     assert actual == expected
 
+    # dQ = sqrt((0.1*10)**2*6 * Element.H.atomic_mass)
+    # dQ / 2 =1.2295974951178128
     actual = loadfn("excited/disp_0.5/image_structure_info.json")
     expected = ImageStructureInfo(dQ=1.2295974951178128, correction=200.0,
                                   correction_type="eFNV")
