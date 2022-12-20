@@ -167,7 +167,7 @@ def test_make_wswq_dirs(tmpdir, mocker):
         Path(f"{state}/disp_-0.2/POTCAR").write_text("potcar")
         Path(f"{state}/disp_-0.2/WAVECAR").write_text("qqq")
 
-        incar = ViseIncar({"NSW": 100})
+        incar = ViseIncar({"NSW": 100, "LORBIT": 11})
         incar.write_file(Path(f"{state}/disp_-0.2/INCAR"))
 
 
@@ -195,8 +195,7 @@ def test_make_wswq_dirs(tmpdir, mocker):
                                     "ALGO": "None",
                                     "LWSWQ": True,
                                     "NELM": 1,
-                                    "LWAVE": False,
-                                    "LORBIT": "None"})
+                                    "LWAVE": False})
         assert actual_incar == expected_incar
 
         assert Path(wswq_dir/"KPOINTS").is_symlink()

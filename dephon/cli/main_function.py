@@ -225,7 +225,8 @@ def _make_wswq_dir(dir_, original_dir):
         FileLink((dir_/f_name).absolute()).transfer(wswq_dir)
 
     incar = ViseIncar.from_file(dir_/"INCAR")
-    incar.update({"ALGO": "None", "LWSWQ": True, "NELM": 1, "LWAVE": False, "LORBIT": None})
+    incar.update({"ALGO": "None", "LWSWQ": True, "NELM": 1, "LWAVE": False})
+    incar.pop("LORBIT", None)
     incar.write_file(Path(wswq_dir/"INCAR"))
 
     os.symlink((dir_/"WAVECAR").absolute(), (wswq_dir/"WAVECAR.qqq"))
