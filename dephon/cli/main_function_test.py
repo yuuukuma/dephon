@@ -26,7 +26,7 @@ def test_make_dephon_init(test_files, tmpdir):
                      unitcell=Unitcell.from_yaml(dir_ / "unitcell.yaml"),
                      p_state=loadfn(dir_ / "perfect_band_edge_state.json"))
     make_dephon_init(args)
-    actual = loadfn("cc/Va_O1_1to0/ccd_init.json").__str__()
+    actual = loadfn("cc/Va_O1_1to0/dephon_init.json").__str__()
     expected = """name: Va_O1
 semiconductor type:  n-type
 vbm              1.740  supercell vbm  1.615
@@ -45,7 +45,7 @@ M (amu)         48.367
 def test_make_ccd_dirs(tmpdir, ground_structure, excited_structure,
                        intermediate_structure):
     tmpdir.chdir()
-    ccd_init = DephonInit(
+    dephon_init = DephonInit(
         name="test",
         ground_state=MinimumPointInfo(charge=1,
                                       structure=ground_structure,
@@ -66,7 +66,7 @@ def test_make_ccd_dirs(tmpdir, ground_structure, excited_structure,
         vbm=-100.0, cbm=100.0, supercell_vbm=-100.0, supercell_cbm=100.0)
 
     Path("test").mkdir()
-    args = Namespace(ccd_init=ccd_init,
+    args = Namespace(dephon_init=dephon_init,
                      e_to_g_div_ratios=[0.5, 1.0],
                      g_to_e_div_ratios=[1.0],
                      calc_dir=Path("test"))
@@ -182,13 +182,13 @@ def test_make_wswq_dirs(tmpdir, mocker):
 
     Path(f"excited/disp_-0.2/wswq").mkdir()
 
-    ccd_init = mocker.MagicMock()
-    ccd_init.ground_state.dir_path = Path(tmpdir/"ground_original")
-    ccd_init.excited_state.dir_path = Path(tmpdir/"excited_original")
+    dephon_init = mocker.MagicMock()
+    dephon_init.ground_state.dir_path = Path(tmpdir/"ground_original")
+    dephon_init.excited_state.dir_path = Path(tmpdir/"excited_original")
 
     args = Namespace(ground_dirs=[Path(f"ground/disp_-0.2")],
                      excited_dirs=[Path(f"excited/disp_-0.2")],
-                     ccd_init=ccd_init)
+                     dephon_init=dephon_init)
     make_wswq_dirs(args)
 
     for state in ["ground"]:

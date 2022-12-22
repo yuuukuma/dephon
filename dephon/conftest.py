@@ -5,7 +5,8 @@ from pathlib import Path
 import pytest
 from pymatgen.core import Structure, Lattice
 
-from dephon.config_coord import ImageStructureInfo, Ccd
+from dephon.config_coord import ImageStructureInfo, Ccd, ImageStructureInfos
+from dephon.enum import CorrectionEnergyType
 
 
 @pytest.fixture(scope="session")
@@ -67,15 +68,17 @@ direct
 0.0 0.0 0.85""", fmt="poscar")
 
 
-
 @pytest.fixture
 def ccd(excited_structure, ground_structure, intermediate_structure):
-    return Ccd(image_infos={
-        "excited": [ImageStructureInfo(0.0, 0.1, -3.0),
-                    ImageStructureInfo(1.0, 1.1, -3.0)],
-        "ground": [ImageStructureInfo(0.0, 0.2, -4.0),
-                   ImageStructureInfo(1.0, 1.2, -4.0)]},
-        name="test")
+    return Ccd(defect_name="test",
+               correction_energy_type=CorrectionEnergyType.extended_FNV,
+               image_infos_list=[
+                   ImageStructureInfos("excited",
+                                       [ImageStructureInfo(0.0, 0.1, 0.1, -3.0),
+                                        ImageStructureInfo(1.0, 0.2, 1.1, -3.0)]),
+                   ImageStructureInfos("ground",
+                                       [ImageStructureInfo(0.0, 0.9, 0.2, -4.0),
+                                        ImageStructureInfo(1.0, 0.8, 1.2, -4.0)])])
 
 
 @pytest.fixture(scope="session")

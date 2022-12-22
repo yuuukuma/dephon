@@ -38,7 +38,9 @@ def parse_args_main(args):
     # -- make_dephon_init -----------------------------------
     parser_make_dephon_init = subparsers.add_parser(
         name="make_dephon_init",
-        description="",
+        description="Make dephon_init.json file from two directories with "
+                    "pydefect files. When the excited state has one more "
+                    "(less) charge state, n(p)-type is assumed.",
         parents=[unitcell_parser, pbes_parser],
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
         aliases=['mdi'])
@@ -54,7 +56,8 @@ def parse_args_main(args):
     # -- make_ccd_dirs -----------------------------------
     parser_add_ccd_dirs = subparsers.add_parser(
         name="make_ccd_dirs",
-        description="",
+        description="Make directories to calculate configuration coordination "
+                    "diagrams for ground and excited states.",
         parents=[dephon_init],
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
         aliases=['mcd'])
@@ -77,7 +80,10 @@ def parse_args_main(args):
     # -- make_ccd -----------------------------------
     parser_make_ccd = subparsers.add_parser(
         name="make_ccd",
-        description="",
+        description="Make ccd.json file from calculated directories."
+                    "Before running this command, one needs to create "
+                    "calc_results.json and band_edge_states.json files"
+                    "at each directory.",
         parents=[dephon_init],
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
         aliases=['mc'])
@@ -96,7 +102,7 @@ def parse_args_main(args):
     # -- set_fitting_q_range -----------------------------------
     parser_set_fitting_q_range = subparsers.add_parser(
         name="set_fitting_q_range",
-        description="",
+        description="Set the fitting range for the quadratic potential surface",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
         aliases=['sfq'])
 
@@ -113,7 +119,7 @@ def parse_args_main(args):
     # -- plot_ccd -----------------------------------
     parser_plot_ccd = subparsers.add_parser(
         name="plot_ccd",
-        description="",
+        description="Plot cc diagram from ccd.json file",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
         aliases=['pc'])
 
@@ -128,7 +134,7 @@ def parse_args_main(args):
     parser_plot_eigenvalues = subparsers.add_parser(
         name="plot_eigenvalues",
         parents=[dephon_init],
-        description="",
+        description="Plot eigenvalues as function of Q for each state.",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
         aliases=['pe'])
 

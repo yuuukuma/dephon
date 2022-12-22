@@ -58,7 +58,7 @@ def make_dephon_init(args: Namespace):
     if g_name != e_name:
         logger.warning("The names of ground and excited states are "
                        f"{g_name} and {e_name}. Here, {g_name} is used.")
-    ccd_init = DephonInit(name=g_name,
+    dephon_init = DephonInit(name=g_name,
                           ground_state=ground_state,
                           excited_state=excited_state,
                           vbm=args.unitcell.vbm,
@@ -67,39 +67,39 @@ def make_dephon_init(args: Namespace):
                           supercell_cbm=args.p_state.cbm_info.energy)
 
     transfer_name = f"{excited_state.charge}to{ground_state.charge}"
-    path = Path(f"cc/{ccd_init.name}_{transfer_name}")
+    path = Path(f"cc/{dephon_init.name}_{transfer_name}")
     if path.exists() is False:
         path.mkdir(parents=True)
 
-    json_file = path / "ccd_init.json"
+    json_file = path / "dephon_init.json"
     if json_file.exists():
         logger.info(f"{json_file} exists. Remove it first to recreate it.")
         return
 
-    ccd_init.to_json_file(json_file)
-    print(ccd_init)
+    dephon_init.to_json_file(json_file)
+    print(dephon_init)
 
 
 def make_ccd_dirs(args: Namespace):
     os.chdir(args.calc_dir)
-    gs = args.ccd_init.ground_state.structure
-    es = args.ccd_init.excited_state.structure
+    gs = args.dephon_init.ground_state.structure
+    es = args.dephon_init.excited_state.structure
     e_to_g = es.interpolate(gs, nimages=args.e_to_g_div_ratios)
     g_to_e = gs.interpolate(es, nimages=args.g_to_e_div_ratios)
 
-    e_dQs = [args.ccd_init.dQ * (1.0 - r) for r in args.e_to_g_div_ratios]
-    g_dQs = [args.ccd_init.dQ * r for r in args.g_to_e_div_ratios]
+    e_dQs = [args.dephon_init.dQ * (1.0 - r) for r in args.e_to_g_div_ratios]
+    g_dQs = [args.dephon_init.dQ * r for r in args.g_to_e_div_ratios]
 
     for state, ratios, structures, dQs in \
             [("excited", args.e_to_g_div_ratios, e_to_g, e_dQs),
              ("ground", args.g_to_e_div_ratios, g_to_e, g_dQs)]:
 
         if state == "ground":
-            charge = args.ccd_init.ground_state.charge
-            correction = args.ccd_init.ground_state.energy_correction
+            charge = args.dephon_init.ground_state.charge
+            correction = args.dephon_init.ground_state.energy_correction
         else:
-            charge = args.ccd_init.excited_state.charge
-            correction = args.ccd_init.excited_state.energy_correction
+            charge = args.dephon_init.excited_state.charge
+            correction = args.dephon_init.excited_state.energy_correction
 
         for ratio, structure, dQ in zip(ratios, structures, dQs):
             _make_ccd_dir(charge, state, ratio, structure, dQ, correction)
@@ -197,7 +197,7 @@ def plot_eigenvalues(args: Namespace):
             logger.info(f"band_edge_orbital_infos.json does not exist in {d}")
             pass
 
-    vbm, cbm = args.ccd_init.vbm, args.ccd_init.cbm
+    vbm, cbm = args.dephon_init.vbm, args.dephon_init.cbm
     eigval_plotter = EigenvaluePlotter(orb_infos, qs, vbm, cbm)
     eigval_plotter.construct_plot()
     eigval_plotter.plt.savefig(args.fig_name)
@@ -206,9 +206,9 @@ def plot_eigenvalues(args: Namespace):
 
 def make_wswq_dirs(args: Namespace):
     for dir_ in args.ground_dirs:
-        _make_wswq_dir(dir_, args.ccd_init.ground_state.dir_path)
+        _make_wswq_dir(dir_, args.dephon_init.ground_state.dir_path)
     for dir_ in args.excited_dirs:
-        _make_wswq_dir(dir_, args.ccd_init.excited_state.dir_path)
+        _make_wswq_dir(dir_, args.dephon_init.excited_state.dir_path)
 
 
 def _make_wswq_dir(dir_, original_dir):
