@@ -1,186 +1,147 @@
 # -*- coding: utf-8 -*-
 #  Copyright (c) 2022 Kumagai group.
-from math import sqrt
 
 import pytest
-from pymatgen.core import Element, Structure, Lattice
-from vise.tests.helpers.assertion import assert_json_roundtrip, \
-    assert_dataclass_almost_equal
 
 from dephon.config_coord import Ccd, ImageStructureInfo, CcdPlotter, \
-    get_dR, CcdInit, MinimumPointInfo
-from dephon.enum import Carrier
-
-
-def test_get_dR():
-    lattice = Lattice.orthorhombic(10, 20, 30)
-    structure1 = Structure(lattice, ["H"], [[0.0, 0.0, 0.0]])
-    structure2 = Structure(lattice, ["H"], [[0.1, 0.1, 0.1]])
-    assert get_dR(structure1, structure2) == sqrt(1**2+2**2+3**2)
-
-
-@pytest.fixture
-def minimum_point_info(ground_structure):
-    return MinimumPointInfo(charge=-1,
-                            structure=ground_structure,
-                            energy=10.0,
-                            energy_correction=1.0,
-                            initial_site_symmetry="4mm",
-                            final_site_symmetry="2/m",
-                            carriers=[Carrier.hole],
-                            parsed_dir="/path/to/min_point")
-
+    ImageStructureInfos, spline3
+from dephon.enum import CorrectionEnergyType
 
 band_edges = dict(vbm=1.0, cbm=2.0, supercell_vbm=1.1, supercell_cbm=1.9)
 
+@pytest.fixture
+def imag_structure_info_min_info():
+    return ImageStructureInfo(dQ=1.0, disp_ratio=0.1)
 
 @pytest.fixture
-def ccd_init_p_capture(ground_structure, excited_structure):
-    ground_state = MinimumPointInfo(charge=0,
-                                    structure=ground_structure,
-                                    energy=11.0,
-                                    energy_correction=-1.0,
-                                    initial_site_symmetry="2mm",
-                                    final_site_symmetry="2",
-                                    carriers=[],
-                                    parsed_dir="/path/to/ground")
-    excited_state = MinimumPointInfo(charge=-1,
-                                     structure=excited_structure,
-                                     energy=12.0,
-                                     energy_correction=-1.0,
-                                     initial_site_symmetry="2mm",
-                                     final_site_symmetry="2",
-                                     carriers=[Carrier.hole],
-                                     parsed_dir="/path/to/excited")
-    # transition level = 1.0 from VBM
-    return CcdInit(name="Va_O", ground_state=ground_state,
-                   excited_state=excited_state, **band_edges)
+def imag_structure_info_max_info():
+    return ImageStructureInfo(dQ=1.0,
+                              disp_ratio=0.1,
+                              energy=2.0,
+                              correction_energy=3.0,
+                              used_for_fitting=True,
+                              is_shallow=True)
 
 
-@pytest.fixture
-def ccd_init_n_capture(ground_structure, excited_structure):
-    ground_state = MinimumPointInfo(charge=0,
-                                    structure=ground_structure,
-                                    energy=11.0,
-                                    energy_correction=-1.0,
-                                    initial_site_symmetry="2mm",
-                                    final_site_symmetry="2",
-                                    carriers=[],
-                                    parsed_dir="/path/to/ground")
-    excited_state = MinimumPointInfo(charge=1,
-                                     structure=excited_structure,
-                                     energy=12.0,
-                                     energy_correction=-1.0,
-                                     initial_site_symmetry="2mm",
-                                     final_site_symmetry="2",
-                                     carriers=[Carrier.electron],
-                                     parsed_dir="/path/to/excited")
-    # transition level = -1.0 from CBM
-    return CcdInit(name="Va_O", ground_state=ground_state,
-                   excited_state=excited_state, **band_edges)
+def test_image_structure_info_corrected_energy(imag_structure_info_min_info,
+                                               imag_structure_info_max_info):
+    assert imag_structure_info_min_info.corrected_energy is None
+    assert imag_structure_info_max_info.corrected_energy == 2.0 + 3.0
 
 
-def test_json_roundtrip(ccd_init_p_capture, tmpdir):
-    assert_json_roundtrip(ccd_init_p_capture, tmpdir)
+def test_image_structure_str(imag_structure_info_min_info,
+                             imag_structure_info_max_info):
+    actual = imag_structure_info_min_info.__str__()
+    expected = """  dQ    disp ratio  energy    corr. energy    used for fitting?    is shallow?
+1.00          0.10  -         -               -                    -"""
+    assert actual == expected
 
-
-def test_minimum_point_info(minimum_point_info):
-    assert minimum_point_info.degeneracy_by_symmetry_reduction == 2
-
-
-def test_ccd_init_ground_state_w_pn(ccd_init_p_capture, ground_structure):
-    actual = ccd_init_p_capture.ground_state_w_pn
-    expected = MinimumPointInfo(charge=0,
-                                structure=ground_structure,
-                                energy=12.0,
-                                energy_correction=-1.0,
-                                initial_site_symmetry="2mm",
-                                final_site_symmetry="2",
-                                carriers=[Carrier.hole, Carrier.electron],
-                                parsed_dir="/path/to/ground")
-    assert_dataclass_almost_equal(actual, expected)
-
-
-def test_ccd_init_dQ(ccd_init_p_capture):
-    expected = sqrt((0.1*10)**2*6 * Element.H.atomic_mass)
-    assert ccd_init_p_capture.dQ == pytest.approx(expected)
-
-
-def test_ccd_init_minority_carrier(ccd_init_p_capture, ccd_init_n_capture):
-    assert ccd_init_p_capture.minority_carrier == Carrier.hole
-    assert ccd_init_n_capture.minority_carrier == Carrier.electron
-
-
-def test_ccd_init_semiconductor_type(ccd_init_p_capture, ccd_init_n_capture):
-    assert ccd_init_p_capture.semiconductor_type == "p-type"
-    assert ccd_init_n_capture.semiconductor_type == "n-type"
-
-
-def test_ccd_string(ccd_init_p_capture):
-    actual = ccd_init_p_capture.__str__()
-    print(ccd_init_p_capture)
-    expected = """name: Va_O
-semiconductor type:  p-type
-vbm             1.000  supercell vbm  1.100
-cbm             2.000  supercell cbm  1.900
-dQ (amu^0.5 Å)  2.459
-dR (Å)          2.449
-M (amu)         1.008
-------------------------------------------------------------
-  q   carrier    initial symm     final symm    energy    correction    corrected energy    ZPL
-  0     h+e          2mm                   2    12.000        -1.000              11.000
- -1      h           2mm                   2    12.000        -1.000              11.000  0.000
-  0                  2mm                   2    11.000        -1.000              10.000  1.000"""
+    actual = imag_structure_info_max_info.__str__()
+    expected = """  dQ    disp ratio    energy    corr. energy  used for fitting?    is shallow?
+1.00          0.10      2.00            3.00  True                 True"""
     assert actual == expected
 
 
-def test_image_structure_info():
-    imag_structure_info = ImageStructureInfo(dQ=1.0, energy=2.0, correction=3.0)
-    assert imag_structure_info.corrected_energy == 2.0 + 3.0
+@pytest.fixture
+def ground_state():
+    return ImageStructureInfos(
+        state_name="q=0",
+        image_structure_infos=[ImageStructureInfo(3., 1.0, 2.3, 1.),
+                               ImageStructureInfo(2., 0.9, 0.2, 2.),
+                               ImageStructureInfo(1., 0.8, 0.3, 3.),
+                               ImageStructureInfo(4., 0.8, 0.3, 3.),
+                               ])
+
+
+def test_image_structure_infos_sort(ground_state):
+    actual = ground_state.image_structure_infos[0]
+    expected = ImageStructureInfo(1., 0.8, 0.3, 3.)
+    assert actual == expected
+
+
+def test_image_structure_infos_lowest_energy(ground_state):
+    assert ground_state.lowest_energy == 2.2
+
+
+def test_image_structure_infos_set_q_range(ground_state):
+    ground_state.set_q_range(min_q=1.1, max_q=2.1)
+    actual = [i.used_for_fitting for i in ground_state.image_structure_infos]
+    assert actual == [False, True, False, False]
+
+    ground_state.set_q_range()
+    actual = [i.used_for_fitting for i in ground_state.image_structure_infos]
+    assert actual == [True, True, True, True]
+
+
+def test_image_structure_infos_omega(ground_state):
+    ground_state.set_q_range()
+    assert ground_state.omega() == pytest.approx(0.04794880190203623)
+
+
+def test_image_structure_infos_str(ground_state):
+    ground_state.set_q_range()
+    actual = ground_state.__str__()
+    print(actual)
+    expected = """state: q=0
+omega: 0.05
+  dQ    disp ratio    energy    corr. energy  used for fitting?    is shallow?
+1.00          0.80      0.30            3.00  True                 -
+2.00          0.90      0.20            2.00  True                 -
+3.00          1.00      2.30            1.00  True                 -
+4.00          0.80      0.30            3.00  True                 -"""
+    assert actual == expected
 
 
 @pytest.fixture
-def ccd():
-    return Ccd(name="Va_O1",
-               image_infos={"q=0": [ImageStructureInfo(9.4, 1.0, 12.0),
-                                    ImageStructureInfo(10.0, 1.0, 10.0),
-                                    ImageStructureInfo(10.4, 1.0, 6.0),
-                                    ImageStructureInfo(10.8, 1.0, 4.0),
-                                    ImageStructureInfo(13.6, 1.0, 3.0),
-                                    ImageStructureInfo(16.4, 1.0, 2.0),
-                                    ImageStructureInfo(20.0, 1.0, 0.0)],
-                            "q=1": [ImageStructureInfo(8.4, 1.0, -2.0),
-                                    ImageStructureInfo(9.0, 1.0, -3.5),
-                                    ImageStructureInfo(9.4, 1.0, -2.0),
-                                    ImageStructureInfo(10.6, 1.0, -1.0),
-                                    ImageStructureInfo(12.6, 1.0, 1.0),
-                                    ImageStructureInfo(15.4, 1.0, 4.0),
-                                    ImageStructureInfo(19.0, 1.0, 10.0)]},
-               fitting_q_ranges={"q=1": [10.0, 20.0]})
+def ccd(ground_state):
+    excited_state = ImageStructureInfos(
+        state_name="q=1",
+        image_structure_infos=[ImageStructureInfo(3., 1.0, 10.1, 1.),
+                               ImageStructureInfo(2., 0.9, 10.2, 2.),
+                               ImageStructureInfo(1., 0.8, 10.3, 3.)])
+    return Ccd(defect_name="Va_O1",
+               correction_energy_type=CorrectionEnergyType.extended_FNV,
+               image_infos_list=[ground_state, excited_state])
 
 
-def test_ccd_omega_(ccd):
-    ccd.set_q_range("q=0", 9.0, 21.0)
-    assert ccd.omega(image_name="q=0") == 0.033121755227466375
-
-
-def test_ccd_omega_str(ccd):
-    print(ccd)
+def test_ccd_str(ccd):
+    actual = ccd.__str__()
+    expected = """name: Va_O1
+correction energy type: extended FNV
+--------------------------------------------------
+state: q=0
+omega: N.A.
+  dQ    disp ratio    energy    corr. energy  used for fitting?    is shallow?
+1.00          0.80      0.30            3.00  -                    -
+2.00          0.90      0.20            2.00  -                    -
+3.00          1.00      2.30            1.00  -                    -
+4.00          0.80      0.30            3.00  -                    -
+--------------------------------------------------
+state: q=1
+omega: N.A.
+  dQ    disp ratio    energy    corr. energy  used for fitting?    is shallow?
+1.00          0.80     10.30            3.00  -                    -
+2.00          0.90     10.20            2.00  -                    -
+3.00          1.00     10.10            1.00  -                    -"""
+    assert actual == expected
 
 
 def test_ccd_lowest_energy(ccd):
-    assert ccd.lowest_energy == -2.5
+    assert ccd.lowest_energy == 2.2
+
+
+def test_spline3():
+    x = [0.0, 1.0, 2.0, 3.0]
+    y = [0.0, 1.0, 8.0, 28.0]
+    assert (spline3(x, y, num_points=11))[1][1] == pytest.approx(2.17924820)
+    # actual = spline3(x, y, num_points=11, x_min=-1.0, x_max=4.0)
+    # print(actual)
+    # assert actual[0][0] == pytest.approx(-1.0)
+    # assert actual[0][-1] == pytest.approx(4.0)
 
 
 def test_plot_ccd(ccd):
+    ccd.image_infos_list[0].set_q_range()
     plotter = CcdPlotter(ccd)
     plotter.construct_plot()
     plotter.plt.show()
-
-""" 
-TODO: 
-plot
-
-1. add defect position
-2. consider how to handle the small difference of origin.
-"""

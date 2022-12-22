@@ -9,7 +9,7 @@ from monty.serialization import loadfn
 from pydefect.cli.main import add_sub_parser
 from pymatgen.io.vasp.inputs import UnknownPotcarWarning
 
-from dephon.cli.main_function import make_ccd_init, make_ccd, \
+from dephon.cli.main_function import make_dephon_init, make_ccd, \
     make_ccd_dirs, plot_ccd, plot_eigenvalues, set_fitting_q_range, \
     make_wswq_dirs
 from dephon.version import __version__
@@ -31,31 +31,34 @@ def parse_args_main(args):
     unitcell_parser = add_sub_parser(argparse, name="unitcell")
     pbes_parser = add_sub_parser(argparse, name="perfect_band_edge_state")
 
-    # -- make_ccd_init -----------------------------------
-    parser_make_ccd_init = subparsers.add_parser(
-        name="make_ccd_init",
+    dephon_init = argparse.ArgumentParser(description="", add_help=False)
+    dephon_init.add_argument(
+            "--dephon_init", type=loadfn, default="dephon_init.json")
+
+    # -- make_dephon_init -----------------------------------
+    parser_make_dephon_init = subparsers.add_parser(
+        name="make_dephon_init",
         description="",
         parents=[unitcell_parser, pbes_parser],
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
-        aliases=['mci'])
+        aliases=['mdi'])
 
-    parser_make_ccd_init.add_argument(
+    parser_make_dephon_init.add_argument(
         "-ed", "--excited_dir", type=Path, required=True,
         help="Directory for an excited state defect, e.g., Va_O1_0.")
-    parser_make_ccd_init.add_argument(
+    parser_make_dephon_init.add_argument(
         "-gd", "--ground_dir", type=Path, required=True,
         help="Directory for a ground state defect, e.g., Va_O1_1.")
-    parser_make_ccd_init.set_defaults(func=make_ccd_init)
+    parser_make_dephon_init.set_defaults(func=make_dephon_init)
 
     # -- make_ccd_dirs -----------------------------------
     parser_add_ccd_dirs = subparsers.add_parser(
         name="make_ccd_dirs",
         description="",
+        parents=[dephon_init],
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
         aliases=['mcd'])
 
-    parser_add_ccd_dirs.add_argument(
-        "--ccd_init", type=loadfn, default="ccd_init.json")
     parser_add_ccd_dirs.add_argument(
         "-egr", "--e_to_g_div_ratios", type=float, nargs="+",
         default=[-0.4, -0.2, 0.0, 0.2, 0.4, 0.6, 0.8],
@@ -75,11 +78,10 @@ def parse_args_main(args):
     parser_make_ccd = subparsers.add_parser(
         name="make_ccd",
         description="",
+        parents=[dephon_init],
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
         aliases=['mc'])
 
-    parser_make_ccd.add_argument(
-        "--ccd_init", type=loadfn, default="ccd_init.json")
     parser_make_ccd.add_argument(
         "-g", "--ground_dirs", type=Path, nargs="+",
         help="Directories for ground directories.")
@@ -118,8 +120,6 @@ def parse_args_main(args):
     parser_plot_ccd.add_argument(
         "--ccd", type=loadfn, default="ccd.json")
     parser_plot_ccd.add_argument(
-        "--spline_deg", type=int, default=3)
-    parser_plot_ccd.add_argument(
         "--fig_name", type=str, default="ccd.pdf")
 
     parser_plot_ccd.set_defaults(func=plot_ccd)
@@ -127,12 +127,11 @@ def parse_args_main(args):
     # -- plot_eigenvalues -----------------------------------
     parser_plot_eigenvalues = subparsers.add_parser(
         name="plot_eigenvalues",
+        parents=[dephon_init],
         description="",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
         aliases=['pe'])
 
-    parser_plot_eigenvalues.add_argument(
-        "--ccd_init", type=loadfn, default="ccd_init.json")
     parser_plot_eigenvalues.add_argument(
         "--ccd", type=loadfn, default="ccd.json")
     parser_plot_eigenvalues.add_argument(

@@ -1,268 +1,160 @@
 # -*- coding: utf-8 -*-
 #  Copyright (c) 2022 Kumagai group.
-from copy import deepcopy
-from dataclasses import dataclass, field
-from pathlib import Path
-from typing import List, Dict
+from dataclasses import dataclass
+from typing import List
 
 import numpy as np
 from matplotlib import pyplot as plt
 from matplotlib.axes import Axes
 from monty.json import MSONable
 from nonrad.ccd import get_omega_from_PES
-from pymatgen.analysis.defects.ccd import get_dQ
-from pymatgen.core import Structure
 from scipy import interpolate
 from tabulate import tabulate
 from vise.util.logger import get_logger
 from vise.util.matplotlib import float_to_int_formatter
 from vise.util.mix_in import ToJsonFileMixIn
-from vise.util.structure_symmetrizer import num_sym_op
 
-from dephon.enum import Carrier
+from dephon.enum import CorrectionEnergyType
 
 logger = get_logger(__name__)
 
 
-def get_dR(ground: Structure, excited: Structure) -> float:
-    """Summation of atomic displacement distance
-
-    Args:
-        ground (Structure): Reference structure
-        excited (Structure): Target structure
-
-    Constant deviation needs to be removed by e.g., aligning the farthest atom.
-
-    Returns:
-        The Summed atomic displacement distance in float
-    """
-    return np.sqrt(
-        np.sum([x.distance(y) ** 2 for x, y in zip(ground, excited)]))
-
-
-@dataclass
-class MinimumPointInfo(MSONable):
-    charge: int
-    structure: Structure
-    # formation energy at Ef=VBM and chemical potentials being standard states.
-    energy: float
-    energy_correction: float
-    carriers: List[Carrier]
-    initial_site_symmetry: str
-    final_site_symmetry: str
-    # absolute dir
-    parsed_dir: str
-
-    @property
-    def corrected_energy(self):
-        return self.energy + self.energy_correction
-
-    @property
-    def degeneracy_by_symmetry_reduction(self):
-        initial_num_sym_op = num_sym_op[self.initial_site_symmetry]
-        final_num_sym_op = num_sym_op[self.final_site_symmetry]
-        return initial_num_sym_op / final_num_sym_op
-
-    @property
-    def carriers_str(self):
-        return "+".join([str(c) for c in self.carriers])
-
-    @property
-    def dir_path(self):
-        return Path(self.parsed_dir)
-
-
-@dataclass
-class CcdInit(MSONable, ToJsonFileMixIn):
-    name: str
-    ground_state: MinimumPointInfo
-    excited_state: MinimumPointInfo
-    vbm: float
-    cbm: float
-    supercell_vbm: float
-    supercell_cbm: float
-
-    # TODO: add transition_level property and show it in __str__
-
-    def __post_init__(self):
-        if abs(self.ground_state.charge - self.excited_state.charge) != 1:
-            logger.warning("Charge difference between ground and excited states"
-                           " is not 1. You must know what you are doing.")
-        self.ground_state_w_pn = deepcopy(self.ground_state)
-        self.ground_state_w_pn.carriers = [Carrier.hole, Carrier.electron]
-        self.ground_state_w_pn.energy += self.cbm - self.vbm
-
-    @property
-    def trap_charge_by_excited_state(self):
-        return - (self.excited_state.charge - self.ground_state.charge)
-
-    @property
-    def minority_carrier(self) -> Carrier:
-        return self.excited_state.carriers[0]
-
-    @property
-    def semiconductor_type(self) -> str:
-        if self.trap_charge_by_excited_state == 1:
-            return "p-type"
-        else:
-            return "n-type"
-
-    @property
-    def dQ(self):
-        return get_dQ(self.excited_state.structure, self.ground_state.structure)
-
-    @property
-    def dR(self):
-        return get_dR(self.excited_state.structure, self.ground_state.structure)
-
-    @property
-    def modal_mass(self):
-        return (self.dQ / self.dR) ** 2
-
-    # @property
-    # def zero_phonon_line(self):
-    #     e_diff = self.excited_energy_at_Ef - self.ground_energy_at_Ef
-    #     if self.trapped_carrier_charge == 1:
-    #         # electron capture
-    #         carrier_energy = self.cbm
-    #     elif self.trapped_carrier_charge == -1:
-    #         # hole capture
-    #         carrier_energy = -self.vbm
-    #     else:
-    #         raise AssertionError(f"Charge diff {self.trapped_carrier_charge} is weird.")
-
-        # return e_diff + carrier_energy
-
-    def __str__(self):
-        result = [f"name: {self.name}",
-                  f"semiconductor type:  {self.semiconductor_type}"]
-        table = [["vbm", self.vbm, "supercell vbm", self.supercell_vbm],
-                 ["cbm", self.cbm, "supercell cbm", self.supercell_cbm],
-                 ["dQ (amu^0.5 Å)", self.dQ],
-                 ["dR (Å)", self.dR],
-                 ["M (amu)", self.modal_mass]]
-        result.append(tabulate(table, tablefmt="plain", floatfmt=".3f"))
-
-        result.append("-" * 60)
-
-        headers = ["q", "carrier", "initial symm", "final symm", "energy",
-                   "correction", "corrected energy", "ZPL"]
-        table = []
-
-        last_energy = None
-
-        for state in [self.ground_state_w_pn,
-                      self.excited_state,
-                      self.ground_state]:
-            table.append(
-                [state.charge, state.carriers_str, state.initial_site_symmetry,
-                 state.final_site_symmetry, state.energy,
-                 state.energy_correction, state.corrected_energy])
-            if last_energy:
-                table[-1].append(last_energy - state.corrected_energy)
-            last_energy = state.corrected_energy
-
-        result.append(
-            tabulate(table, tablefmt="plain", headers=headers, floatfmt=".3f",
-                     stralign="center"))
-        # result.append(f"ZPL: {self.zero_phonon_line:.3f}")
-        return "\n".join(result)
+_imag_headers = ["dQ", "disp ratio", "energy", "corr. energy",
+                 "used for fitting?", "is shallow?"]
 
 
 @dataclass
 class ImageStructureInfo(MSONable, ToJsonFileMixIn):
     dQ: float
+    disp_ratio: float
     energy: float = None
-    correction: float = None
-    correction_type: str = None
+    correction_energy: float = None
+    used_for_fitting: bool = None
+    is_shallow: bool = None
 
     @property
     def corrected_energy(self):
-        return self.energy + self.correction
+        try:
+            return self.energy + self.correction_energy
+        except TypeError:
+            return None
+
+    @property
+    def list_data(self):
+        result = [self.dQ, self.disp_ratio, self.energy, self.correction_energy,
+                  self.used_for_fitting, self.is_shallow]
+        return ["-" if x is None else x for x in result]
+
+    def __str__(self):
+        return tabulate([self.list_data], tablefmt="plain", floatfmt=".2f",
+                        headers=_imag_headers)
 
 
 @dataclass
-class Ccd(MSONable, ToJsonFileMixIn):
-    image_infos: Dict[str, List[ImageStructureInfo]]
-    name: str = None
-    fitting_q_ranges: Dict[str, List[float]] = field(default_factory=dict)
+class ImageStructureInfos(MSONable, ToJsonFileMixIn):
+    state_name: str
+    image_structure_infos: List[ImageStructureInfo]
 
     def __post_init__(self):
-        for v in self.image_infos.values():
-            v.sort(key=lambda x: x.dQ)
+        self.image_structure_infos.sort(key=lambda x: x.dQ)
 
     @property
     def lowest_energy(self):
-        energies = []
-        for imag_infos in self.image_infos.values():
-            energies += [imag_info.corrected_energy for imag_info in imag_infos]
-        return min(energies)
+        return min([i.corrected_energy for i in self.image_structure_infos])
 
-    def set_q_range(self, image_name, min_q, max_q):
-        if min_q is None and max_q is None:
-            logger.info(f"Quadratic fitting range for {image_name} is unset.")
-            self.fitting_q_ranges.pop(image_name)
-            return
-        if min_q is None or max_q is None:
-            logger.warning(f"To set quadratic fitting range, both min and max"
-                           f"values need to be set.")
-            return
+    def set_q_range(self, min_q=-float("inf"), max_q=float("inf")):
+        for i in self.image_structure_infos:
+            i.used_for_fitting = (min_q <= i.dQ <= max_q)
 
-        logger.info(f"Quadratic fitting for {image_name} is set to "
-                    f"[{min_q}, {max_q}].")
-        self.fitting_q_ranges[image_name] = [min_q, max_q]
-
-    def q_range(self, image_name):
-        return self.fitting_q_ranges.get(image_name, None)
-
-    def omega(self,
-              image_name: str,
-              ax: Axes = None,
-              energy_std: float = 0.0):
+    def dQs_and_energies(self, check_fitting=False, base_energy=0.0):
         dQs, energies = [], []
-        q_range = self.q_range(image_name)
-        if q_range is None:
-            raise ValueError("To calculate omega, set Q range.")
+        for imag in self.image_structure_infos:
+            if check_fitting and imag.used_for_fitting is not True:
+                continue
+            dQs.append(imag.dQ)
+            energies.append(imag.corrected_energy - base_energy)
+        return dQs, energies
 
-        for v in self.image_infos[image_name]:
-            if q_range[0] < v.dQ < q_range[1]:
-                dQs.append(v.dQ)
-                energies.append(v.corrected_energy - energy_std)
-
+    def omega(self, ax: Axes = None, base_energy=0.0):
+        dQs, energies = self.dQs_and_energies(True, base_energy)
         if len(dQs) < 2:
             raise ValueError("The number of Q points is not sufficient.")
 
         return get_omega_from_PES(np.array(dQs), np.array(energies), ax=ax)
 
+    def add_plot(self, ax, color, base_energy=0.0):
+        dQs, energies = self.dQs_and_energies(base_energy=base_energy)
+        ax.scatter(dQs, energies, marker='o', color=color)
+        try:
+            x, y = spline3(dQs, energies, 100)
+            ax.plot(x, y, label=self.state_name, color=color)
+        except TypeError:
+            pass
+
+        try:
+            self.omega(ax, base_energy)
+        except ValueError as e:
+            print(e)
+            pass
+
     def __str__(self):
-        result = [f"name: {self.name}"]
-        headers = ["dQ", "energy", "corr", "corr energy (rel)", "corr method"]
-        for image_name, imag_structures in self.image_infos.items():
-            result.append(image_name)
-            table = []
-            for imag_structure in imag_structures:
-                table.append([imag_structure.dQ,
-                              imag_structure.energy,
-                              imag_structure.correction,
-                              imag_structure.corrected_energy - self.lowest_energy,
-                              imag_structure.correction_type])
-            tabu = tabulate(table, tablefmt="plain", floatfmt=".2f",
-                            headers=headers)
-            result.append(tabu)
+        try:
+            omega = f"{self.omega():.2f}"
+        except ValueError:
+            omega = "N.A."
+        result = [f"state: {self.state_name}", f"omega: {omega}"]
 
-            q_range = self.q_range(image_name)
-            if q_range:
-                q_range = f"[{q_range[0]}, {q_range[1]}]"
-                result.append(f"Fitting Q range {q_range}")
-                result.append(f"omega: {self.omega(image_name):.3f}")
-            result.append("")
-
+        table_data = [x.list_data for x in self.image_structure_infos]
+        result.append(tabulate(table_data, tablefmt="plain", floatfmt=".2f",
+                               headers=_imag_headers + ["omega"]))
         return "\n".join(result)
 
 
-def spline3(x, y, point, deg):
-    tck, u = interpolate.splprep([x, y], k=deg, s=0)
-    u = np.linspace(0, 1, num=point, endpoint=True)
+@dataclass
+class Ccd(MSONable, ToJsonFileMixIn):
+    defect_name: str
+    correction_energy_type: CorrectionEnergyType
+    image_infos_list: List[ImageStructureInfos]
+
+    @property
+    def image_structure_info_by_name(self, state_name):
+        names = []
+        for i in self.image_infos_list:
+            if i.state_name == state_name:
+                return i
+            names.append(i.state_name)
+        raise ValueError(f"Choose state name from {' '.join(names)}")
+
+    @property
+    def lowest_energy(self):
+        return min([i.lowest_energy for i in self.image_infos_list])
+
+    def __str__(self):
+        result = [f"name: {self.defect_name}",
+                  f"correction energy type: {self.correction_energy_type}"]
+
+        for imag in self.image_infos_list:
+            result.append("-"*50)
+            result.append(imag.__str__())
+        return "\n".join(result)
+
+
+def spline3(xs, ys, num_points):
+    """Find the B-spline representation with 3 degree of the spline.
+
+    Args:
+        xs (array_like):
+        ys (array_like):
+        num_points (int): Number of interpolated points including end points.
+
+    Returns:
+        Tuple of
+    """
+    #   tck : tuple
+    #         (t,c,k) a tuple containing the vector of knots, the B-spline
+    #         coefficients, and the degree of the spline.
+    tck = interpolate.splprep([xs, ys])[0]
+    u = np.linspace(0, 1, num=num_points, endpoint=True)
     spline = interpolate.splev(u, tck)
     return spline[0], spline[1]
 
@@ -270,12 +162,10 @@ def spline3(x, y, point, deg):
 class CcdPlotter:
     def __init__(self, ccd: Ccd,
                  title: str = None,
-                 set_energy_zero: bool = True,
-                 spline_deg: int = 3):
+                 set_energy_zero: bool = True):
         self._title = title or ""
         self._ccd = ccd
         self._set_energy_zero = set_energy_zero
-        self._spline_deg = spline_deg
         self.plt = plt
 
     def construct_plot(self):
@@ -286,17 +176,9 @@ class CcdPlotter:
         self.plt.tight_layout()
 
     def _add_ccd(self):
-        min_e = self._ccd.lowest_energy
-        for more_name, v in self._ccd.image_infos.items():
-            dQs = [vv.dQ for vv in v]
-            energies = [vv.corrected_energy - min_e for vv in v]
-            x, y = spline3(dQs, energies, 100, self._spline_deg)
-            self.plt.plot(x, y, label=more_name)
-            self.plt.scatter(dQs, energies, marker='o')
-
-            ax = self.plt.gca()
-            if self._ccd.fitting_q_ranges.get(more_name, None):
-                self._ccd.omega(more_name, ax=ax, energy_std=min_e)
+        ax = self.plt.gca()
+        for imag_infos in self._ccd.image_infos_list:
+            imag_infos.add_plot(ax, "black", self._ccd.lowest_energy)
 
     def _set_labels(self):
         ax = self.plt.gca()

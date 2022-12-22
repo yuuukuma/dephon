@@ -24,6 +24,11 @@ class Carrier(MSONable, ExtendedEnum):
         raise ValueError
 
 
+class CorrectionEnergyType(MSONable, ExtendedEnum):
+    extended_FNV = "extended FNV"
+    no_correction = "no correction"
+
+
 class BandEdge(MSONable, ExtendedEnum):
     vbm = "vbm"
     cbm = "cbm"

@@ -10,13 +10,14 @@ from pymatgen.core import Structure
 from vise.input_set.incar import ViseIncar
 from vise.input_set.prior_info import PriorInfo
 
-from dephon.cli.main_function import make_ccd_init, make_ccd, plot_ccd, \
+from dephon.cli.main_function import make_dephon_init, make_ccd, plot_ccd, \
     make_ccd_dirs, make_wswq_dirs
-from dephon.config_coord import Ccd, CcdInit, ImageStructureInfo, \
-    MinimumPointInfo
+from dephon.config_coord import Ccd, ImageStructureInfo, ImageStructureInfos
+from dephon.dephon_init import DephonInit, MinimumPointInfo
+from dephon.enum import CorrectionEnergyType
 
 
-def test_make_ccd_init(test_files, tmpdir):
+def test_make_dephon_init(test_files, tmpdir):
     tmpdir.chdir()
     dir_ = test_files / "Na3AgO2"
 
@@ -24,7 +25,7 @@ def test_make_ccd_init(test_files, tmpdir):
                      ground_dir=dir_ / "Va_O1_0",
                      unitcell=Unitcell.from_yaml(dir_ / "unitcell.yaml"),
                      p_state=loadfn(dir_ / "perfect_band_edge_state.json"))
-    make_ccd_init(args)
+    make_dephon_init(args)
     actual = loadfn("cc/Va_O1_1to0/ccd_init.json").__str__()
     expected = """name: Va_O1
 semiconductor type:  n-type
@@ -44,7 +45,7 @@ M (amu)         48.367
 def test_make_ccd_dirs(tmpdir, ground_structure, excited_structure,
                        intermediate_structure):
     tmpdir.chdir()
-    ccd_init = CcdInit(
+    ccd_init = DephonInit(
         name="test",
         ground_state=MinimumPointInfo(charge=1,
                                       structure=ground_structure,
@@ -81,13 +82,13 @@ def test_make_ccd_dirs(tmpdir, ground_structure, excited_structure,
     # dQ = sqrt((0.1*10)**2*6 * Element.H.atomic_mass)
     # dQ / 2 =1.2295974951178128
     actual = loadfn("excited/disp_0.5/image_structure_info.json")
-    expected = ImageStructureInfo(dQ=1.2295974951178128, correction=200.0,
-                                  correction_type="eFNV")
+    expected = ImageStructureInfo(dQ=1.2295974951178128,
+                                  disp_ratio=0.5,
+                                  correction_energy=200.0)
     assert actual == expected
 
     actual = loadfn("excited/disp_1.0/image_structure_info.json")
-    expected = ImageStructureInfo(dQ=0, correction=200.0,
-                                  correction_type="eFNV")
+    expected = ImageStructureInfo(dQ=0, disp_ratio=1.0, correction_energy=200.0)
     assert actual == expected
 
     actual = Structure.from_file("ground/disp_1.0/POSCAR")
@@ -114,42 +115,51 @@ def test_make_ccd(tmpdir, mocker, ground_structure):
             disp_dir = Path(f"{i}/disp_{disp}")
             disp_dir.mkdir(parents=True)
             image_structure_info = ImageStructureInfo(dQ=10.0 + disp,
-                                                      correction=0.1,
-                                                      correction_type="eFNV")
-            image_structure_info.to_json_file(disp_dir / "image_structure_info.json")
+                                                      disp_ratio=disp,
+                                                      correction_energy=0.1)
+            image_structure_info.to_json_file(
+                disp_dir / "image_structure_info.json")
             calc_results = CalcResults(ground_structure, energy=disp,
                                        magnetization=0.0, potentials=[0.0])
             calc_results.to_json_file(str(disp_dir / "calc_results.json"))
 
-    ccd_init = mocker.MagicMock()
-    ccd_init.name = "test"
-    ccd_init.vbm = 1.0
-    ccd_init.cbm = 2.0
-    ccd_init.ground_state.charge = 1
-    ccd_init.excited_state.charge = 0
+    dephon_init = mocker.MagicMock()
+    dephon_init.name = "test"
+    dephon_init.vbm = 1.0
+    dephon_init.cbm = 2.0
+    dephon_init.band_gap = 1.0
+    dephon_init.delta_EF = 0.0
+    dephon_init.ground_state.charge = 1
+    dephon_init.excited_state.charge = 0
+    dephon_init.semiconductor_type = "p"
 
-    args = Namespace(ccd_init=ccd_init,
-                     ground_dirs=[Path("ground/disp_-0.2"), Path("ground/disp_0.2")],
-                     excited_dirs=[Path("excited/disp_-0.2"), Path("excited/disp_0.2")],
+    args = Namespace(dephon_init=dephon_init,
+                     ground_dirs=[Path("ground/disp_-0.2"),
+                                  Path("ground/disp_0.2")],
+                     excited_dirs=[Path("excited/disp_-0.2"),
+                                   Path("excited/disp_0.2")],
                      skip_shallow=False)
     make_ccd(args)
     actual: Ccd = loadfn("ccd.json")
 
-    ground_info = [ImageStructureInfo(9.8, -0.2 + 1.0, 0.1, "eFNV"),
-                   ImageStructureInfo(10.2, 0.2 + 1.0, 0.1, "eFNV")]
-    excited_info = [ImageStructureInfo(9.8, -0.2, 0.1, "eFNV"),
-                    ImageStructureInfo(10.2, 0.2, 0.1, "eFNV")]
-    ground_info_eg = [ImageStructureInfo(9.8, -0.2 + 2.0, 0.1, "eFNV"),
-                      ImageStructureInfo(10.2, 0.2 + 2.0, 0.1, "eFNV")]
-    expected = Ccd(name="test",
-                   image_infos={"ground": ground_info,
-                                "excited + p": excited_info,
-                                "ground + p + n": ground_info_eg})
+    # p-type, minority carrier is an electron.
+    ground_info = ImageStructureInfos(
+        "ground", [ImageStructureInfo(9.8, -0.2, -0.2, 0.1),
+                   ImageStructureInfo(10.2, 0.2, 0.2, 0.1)])
+    excited_info = ImageStructureInfos(
+        "excited + p", [ImageStructureInfo(9.8, -0.2, -0.2, 0.1),
+                        ImageStructureInfo(10.2, 0.2, 0.2, 0.1)])
+    ground_info_eg = ImageStructureInfos(
+        "ground + p + n", [ImageStructureInfo(9.8, -0.2,-0.2 + 1.0, 0.1),
+                           ImageStructureInfo(10.2, 0.2, 0.2 + 1.0, 0.1)])
+    expected = Ccd(defect_name="test",
+                   correction_energy_type=CorrectionEnergyType.extended_FNV,
+                   image_infos_list=[ground_info, excited_info, ground_info_eg])
     assert actual == expected
 
 
 def test_plot_ccd(ccd, tmpdir):
-    args = Namespace(ccd=ccd, spline_deg=1, fig_name=tmpdir / "ccd.pdf")
+    args = Namespace(ccd=ccd, fig_name=tmpdir / "ccd.pdf")
     plot_ccd(args)
 
 
@@ -169,7 +179,6 @@ def test_make_wswq_dirs(tmpdir, mocker):
 
         incar = ViseIncar({"NSW": 100, "LORBIT": 11})
         incar.write_file(Path(f"{state}/disp_-0.2/INCAR"))
-
 
     Path(f"excited/disp_-0.2/wswq").mkdir()
 

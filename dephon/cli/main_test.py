@@ -6,22 +6,26 @@ from pathlib import Path
 from pydefect.analyzer.band_edge_states import PerfectBandEdgeState
 
 from dephon.cli.main import parse_args_main
-from dephon.config_coord import CcdInit, Ccd
+from dephon.config_coord import Ccd
+from dephon.dephon_init import DephonInit
 
 
-def test_main_make_ccd_init(mocker):
+def loadfn_effect(d: dict):
+    def side_effect(filename):
+        try:
+            return d[filename]
+        except KeyError:
+            raise ValueError
+    return side_effect
+
+
+def test_main_make_dephon_init(mocker):
     mock_unitcell = mocker.patch("pydefect.cli.main.Unitcell")
     mock_p_band_edge_state = mocker.Mock(spec=PerfectBandEdgeState, autospec=True)
-
-    def side_effect(filename):
-        if filename == "perfect_band_edge_state.json":
-            return mock_p_band_edge_state
-        else:
-            raise ValueError
-
+    side_effect = loadfn_effect(
+        {"perfect_band_edge_state.json": mock_p_band_edge_state})
     mocker.patch("pydefect.cli.main.loadfn", side_effect=side_effect)
-
-    parsed_args = parse_args_main(["mci",
+    parsed_args = parse_args_main(["mdi",
                                    "-ed", "Va_O1_0",
                                    "-gd", "Va_O1_1",
                                    "-u", "unitcell.yaml",
@@ -38,40 +42,29 @@ def test_main_make_ccd_init(mocker):
 
 
 def test_main_make_dirs_wo_args(mocker):
-    mock_ccd_init = mocker.Mock(spec=CcdInit, autospec=True)
-
-    def side_effect(filename):
-        if filename == "ccd_init_p_capture.json":
-            return mock_ccd_init
-        else:
-            raise ValueError
-
+    mock_dephon_init = mocker.Mock(spec=DephonInit, autospec=True)
+    side_effect = loadfn_effect({"dephon_init.json": mock_dephon_init})
     mocker.patch("dephon.cli.main.loadfn", side_effect=side_effect)
 
     parsed_args = parse_args_main(["mcd"])
     expected = Namespace(
-        ccd_init=mock_ccd_init,
-        e_to_g_div_ratios=[-0.4, -0.2, 0.2, 0.4, 0.6, 0.8],
-        g_to_e_div_ratios=[-0.4, -0.2, 0.2, 0.4, 0.6, 0.8],
+        dephon_init=mock_dephon_init,
+        e_to_g_div_ratios=[-0.4, -0.2, 0.0, 0.2, 0.4, 0.6, 0.8],
+        g_to_e_div_ratios=[-0.4, -0.2, 0.0, 0.2, 0.4, 0.6, 0.8],
         calc_dir=Path.cwd(),
         func=parsed_args.func)
     assert parsed_args == expected
 
 
 def test_main_make_ccd_wo_args(mocker):
-    mock_ccd_init = mocker.Mock(spec=CcdInit, autospec=True)
-
-    def side_effect(filename):
-        if filename == "ccd_init_p_capture.json":
-            return mock_ccd_init
-        else:
-            raise ValueError
+    mock_dephon_init = mocker.Mock(spec=DephonInit, autospec=True)
+    side_effect = loadfn_effect({"dephon_init.json": mock_dephon_init})
 
     mocker.patch("dephon.cli.main.loadfn", side_effect=side_effect)
 
     parsed_args = parse_args_main(["mc", "-g", "Va_O1_4", "-e", "Va_O1_3"])
     expected = Namespace(
-        ccd_init=mock_ccd_init,
+        dephon_init=mock_dephon_init,
         ground_dirs=[Path("Va_O1_4")],
         excited_dirs=[Path("Va_O1_3")],
         skip_shallow=False,
@@ -81,19 +74,12 @@ def test_main_make_ccd_wo_args(mocker):
 
 def test_main_plot_ccd_wo_args(mocker):
     mock_ccd = mocker.Mock(spec=Ccd, autospec=True)
-
-    def side_effect(filename):
-        if filename == "ccd.json":
-            return mock_ccd
-        else:
-            raise ValueError
-
+    side_effect = loadfn_effect({"ccd.json": mock_ccd})
     mocker.patch("dephon.cli.main.loadfn", side_effect=side_effect)
 
     parsed_args = parse_args_main(["pc"])
     expected = Namespace(
         ccd=mock_ccd,
-        spline_deg=3,
         fig_name="ccd.pdf",
         func=parsed_args.func)
     assert parsed_args == expected

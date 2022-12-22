@@ -18,9 +18,10 @@ from vise.input_set.incar import ViseIncar
 from vise.util.file_transfer import FileLink
 from vise.util.logger import get_logger
 
-from dephon.config_coord import ImageStructureInfo, Ccd, CcdPlotter, CcdInit, \
-    MinimumPointInfo
-from dephon.enum import Carrier
+from dephon.config_coord import ImageStructureInfo, Ccd, CcdPlotter, \
+    ImageStructureInfos
+from dephon.dephon_init import DephonInit, MinimumPointInfo
+from dephon.enum import Carrier, CorrectionEnergyType
 from dephon.plot_eigenvalues import EigenvaluePlotter
 
 logger = get_logger(__name__)
@@ -43,7 +44,7 @@ def _make_min_point_info_from_dir(_dir: Path):
     return min_point_info, energy_info.name
 
 
-def make_ccd_init(args: Namespace):
+def make_dephon_init(args: Namespace):
     ground_state, g_name = _make_min_point_info_from_dir(args.ground_dir)
     excited_state, e_name = _make_min_point_info_from_dir(args.excited_dir)
 
@@ -57,13 +58,13 @@ def make_ccd_init(args: Namespace):
     if g_name != e_name:
         logger.warning("The names of ground and excited states are "
                        f"{g_name} and {e_name}. Here, {g_name} is used.")
-    ccd_init = CcdInit(name=g_name,
-                       ground_state=ground_state,
-                       excited_state=excited_state,
-                       vbm=args.unitcell.vbm,
-                       cbm=args.unitcell.cbm,
-                       supercell_vbm=args.p_state.vbm_info.energy,
-                       supercell_cbm=args.p_state.cbm_info.energy)
+    ccd_init = DephonInit(name=g_name,
+                          ground_state=ground_state,
+                          excited_state=excited_state,
+                          vbm=args.unitcell.vbm,
+                          cbm=args.unitcell.cbm,
+                          supercell_vbm=args.p_state.vbm_info.energy,
+                          supercell_cbm=args.p_state.cbm_info.energy)
 
     transfer_name = f"{excited_state.charge}to{ground_state.charge}"
     path = Path(f"cc/{ccd_init.name}_{transfer_name}")
@@ -114,8 +115,8 @@ def _make_ccd_dir(charge, state, ratio, structure, dQ, correction):
         (dir_ / "prior_info.yaml").write_text(
             yaml.dump({"charge": charge}), None)
         image_structure_info = ImageStructureInfo(dQ=dQ,
-                                                  correction=correction,
-                                                  correction_type="eFNV")
+                                                  disp_ratio=ratio,
+                                                  correction_energy=correction)
         image_structure_info.to_json_file(dir_ / "image_structure_info.json")
 
     except FileExistsError:
@@ -125,62 +126,60 @@ def _make_ccd_dir(charge, state, ratio, structure, dQ, correction):
 def make_ccd(args: Namespace):
 
     def _inner(dir_: Path):
-        if args.skip_shallow:
-            try:
-                band_edge_state: BandEdgeState = loadfn(dir_ / "band_edge_states.json")
-            except FileExistsError:
-                logger.warning("To judge if the states are shallow or not,"
-                               "we need band_edge_states.json.")
-                raise
-            if band_edge_state.is_shallow:
-                logger.info(f"Skip {dir_} because it has shallow carriers.")
-                return
         image_info: ImageStructureInfo = loadfn(dir_ / "image_structure_info.json")
         if image_info.energy is None:
             calc_results = get_calc_results(dir_, False)
             image_info.energy = calc_results.energy
+        try:
+            band_edge_state: BandEdgeState = loadfn(dir_ / "band_edge_states.json")
+            image_info.is_shallow = band_edge_state.is_shallow
+            if band_edge_state.is_shallow:
+                logger.info(f"{dir_} has shallow carriers.")
+        except FileNotFoundError:
+            logger.warning("To judge if the states are shallow or not,"
+                           "we need band_edge_states.json.")
         image_info.to_json_file(dir_ / "image_structure_info.json")
         return image_info
 
     ground_image_infos = parse_dirs(args.ground_dirs, _inner, verbose=True)
     excited_image_infos = parse_dirs(args.excited_dirs, _inner, verbose=True)
-
-    ground_charge = args.ccd_init.ground_state.charge
-    excited_charge = args.ccd_init.excited_state.charge
-
-    if excited_charge - ground_charge == -1:
-        ref = args.ccd_init.vbm
-        majority_carrier_type = "p"
-    else:
-        ref = args.ccd_init.cbm
-        majority_carrier_type = "n"
-
-    for v in ground_image_infos:
-        v.energy += ground_charge * ref
-    for v in excited_image_infos:
-        v.energy += excited_charge * ref
-
     ground_eg_image_infos = deepcopy(ground_image_infos)
 
-    for v in ground_eg_image_infos:
-        v.energy += args.ccd_init.cbm - args.ccd_init.vbm
+    _add_carrier_energies(args.dephon_init, ground_image_infos,
+                          excited_image_infos, ground_eg_image_infos)
 
-    ccd = Ccd({"ground": ground_image_infos,
-               f"excited + {majority_carrier_type}": excited_image_infos,
-               "ground + p + n": ground_eg_image_infos},
-              name=args.ccd_init.name)
+    excited_name = f"excited + {args.dephon_init.semiconductor_type}"
+    ground = ImageStructureInfos("ground", ground_image_infos)
+    excited = ImageStructureInfos(excited_name, excited_image_infos)
+    ground_eg = ImageStructureInfos("ground + p + n", ground_eg_image_infos)
+
+    ccd = Ccd(defect_name="test",
+              correction_energy_type=CorrectionEnergyType.extended_FNV,
+              image_infos_list=[ground, excited, ground_eg])
     ccd.to_json_file()
+
+
+def _add_carrier_energies(dephon_init, ground_image_infos, excited_image_infos,
+                          ground_eg_image_infos):
+    fermi_level_from_vbm = dephon_init.delta_EF
+    for v in ground_image_infos:
+        v.energy += dephon_init.ground_state.charge * fermi_level_from_vbm
+    for v in excited_image_infos:
+        v.energy += dephon_init.excited_state.charge * fermi_level_from_vbm
+    for v in ground_eg_image_infos:
+        v.energy += dephon_init.band_gap
 
 
 def set_fitting_q_range(args: Namespace):
     ccd: Ccd = args.ccd
-    ccd.set_q_range(args.image_name, args.q_min, args.q_max)
+    imag = ccd.image_structure_info_by_name(args.image_name)
+    imag.set_q_range(args.q_min, args.q_max)
     ccd.to_json_file()
-    print(ccd)
+    print(imag)
 
 
 def plot_ccd(args: Namespace):
-    plotter = CcdPlotter(args.ccd, spline_deg=args.spline_deg)
+    plotter = CcdPlotter(args.ccd)
     plotter.construct_plot()
     plotter.plt.savefig(args.fig_name)
     plotter.plt.show()
