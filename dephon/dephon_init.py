@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 #  Copyright (c) 2022 Kumagai group.
-from copy import deepcopy
 from dataclasses import dataclass
 from pathlib import Path
 from typing import List
@@ -13,8 +12,6 @@ from tabulate import tabulate
 from vise.util.logger import get_logger
 from vise.util.mix_in import ToJsonFileMixIn
 from vise.util.structure_symmetrizer import num_sym_op
-
-from dephon.enum import Carrier
 
 logger = get_logger(__name__)
 
@@ -42,7 +39,6 @@ class MinimumPointInfo(MSONable):
     # formation energy at Ef=VBM and chemical potentials being standard states.
     energy: float
     energy_correction: float
-    carriers: List[Carrier]
     initial_site_symmetry: str
     final_site_symmetry: str
     # absolute dir
@@ -59,10 +55,6 @@ class MinimumPointInfo(MSONable):
         return initial_num_sym_op / final_num_sym_op
 
     @property
-    def carriers_str(self):
-        return "+".join([str(c) for c in self.carriers])
-
-    @property
     def dir_path(self):
         return Path(self.parsed_dir)
 
@@ -70,59 +62,52 @@ class MinimumPointInfo(MSONable):
 @dataclass
 class DephonInit(MSONable, ToJsonFileMixIn):
     name: str
-    ground_state: MinimumPointInfo
-    excited_state: MinimumPointInfo
+    states: List[MinimumPointInfo]
     vbm: float
     cbm: float
     supercell_vbm: float
     supercell_cbm: float
 
     def __post_init__(self):
-        if abs(self.ground_state.charge - self.excited_state.charge) != 1:
-            logger.warning("Charge difference between ground and excited states"
-                           " is not 1. You must know what you are doing.")
-        self.ground_state_w_pn = deepcopy(self.ground_state)
-        self.ground_state_w_pn.carriers = [Carrier.hole, Carrier.electron]
-        self.ground_state_w_pn.energy += self.cbm - self.vbm
+        assert len(self.states) == 2
 
     @property
     def band_gap(self):
         return self.cbm - self.vbm
+    #
+    # @property
+    # def delta_EF(self):
+    #     return self.band_gap if self.semiconductor_type == "n" else 0.0
 
-    @property
-    def delta_EF(self):
-        return self.band_gap if self.semiconductor_type == "n" else 0.0
-
-    @property
-    def semiconductor_type(self) -> str:
-        trap_charge_by_excited_state = \
-            - (self.excited_state.charge - self.ground_state.charge)
-        if trap_charge_by_excited_state == 1:
-            return "p"
-        else:
-            return "n"
+    # @property
+    # def semiconductor_type(self) -> str:
+    #     trap_charge_by_excited_state = \
+    #         - (self.excited_state.charge - self.ground_state.charge)
+    #     if trap_charge_by_excited_state == 1:
+    #         return "p"
+    #     else:
+    #         return "n"
 
     @property
     def volume(self):
-        assert (self.ground_state.structure.volume
-                == self.excited_state.structure.volume)
-        return self.ground_state.structure.volume
+        assert (self.states[0].structure.volume
+                == self.states[1].structure.volume)
+        return self.states[0].structure.volume
 
     @property
     def dQ(self):
-        return get_dQ(self.excited_state.structure, self.ground_state.structure)
+        return abs(get_dQ(self.states[0].structure, self.states[1].structure))
 
     @property
     def dR(self):
-        return get_dR(self.excited_state.structure, self.ground_state.structure)
+        return abs(get_dR(self.states[0].structure, self.states[1].structure))
 
     @property
     def modal_mass(self):
         return (self.dQ / self.dR) ** 2
 
     def __str__(self):
-        result = [f"name: {self.name}",
-                  f"semiconductor type:  {self.semiconductor_type}-type"]
+        result = [f"name: {self.name}"]
         table = [["vbm", self.vbm, "supercell vbm", self.supercell_vbm],
                  ["cbm", self.cbm, "supercell cbm", self.supercell_cbm],
                  ["dQ (amu^0.5 Å)", self.dQ],
@@ -132,17 +117,15 @@ class DephonInit(MSONable, ToJsonFileMixIn):
 
         result.append("-" * 60)
 
-        headers = ["q", "carrier", "initial symm", "final symm", "energy",
+        headers = ["q", "initial symm", "final symm", "energy",
                    "correction", "corrected energy", "ZPL"]
         table = []
 
         last_energy = None
 
-        for state in [self.ground_state_w_pn,
-                      self.excited_state,
-                      self.ground_state]:
+        for state in self.states:
             table.append(
-                [state.charge, state.carriers_str, state.initial_site_symmetry,
+                [state.charge, state.initial_site_symmetry,
                  state.final_site_symmetry, state.energy,
                  state.energy_correction, state.corrected_energy])
             if last_energy:
@@ -152,7 +135,6 @@ class DephonInit(MSONable, ToJsonFileMixIn):
         result.append(
             tabulate(table, tablefmt="plain", headers=headers, floatfmt=".3f",
                      stralign="center"))
-        # result.append(f"ZPL: {self.zero_phonon_line:.3f}")
         return "\n".join(result)
 
 """ 
