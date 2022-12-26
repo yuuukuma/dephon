@@ -12,8 +12,7 @@ class Carrier(MSONable, ExtendedEnum):
     def charge(self):
         if self.electron:
             return -1
-        else:
-            return 1
+        return 1
 
     @classmethod
     def from_carrier_charge(cls, carrier_charge):
@@ -24,7 +23,7 @@ class Carrier(MSONable, ExtendedEnum):
         raise ValueError
 
 
-class CorrectionEnergyType(MSONable, ExtendedEnum):
+class CorrectionType(MSONable, ExtendedEnum):
     extended_FNV = "extended FNV"
     no_correction = "no correction"
 

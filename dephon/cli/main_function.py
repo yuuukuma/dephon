@@ -18,10 +18,11 @@ from vise.input_set.incar import ViseIncar
 from vise.util.file_transfer import FileLink
 from vise.util.logger import get_logger
 
-from dephon.config_coord import ImageStructureInfo, Ccd, CcdPlotter, \
-    ImageStructureInfos
+from dephon.config_coord import SinglePointInfo, Ccd, CcdPlotter, \
+    SingleCcd
+from dephon.corrections import DephonCorrection
 from dephon.dephon_init import DephonInit, MinimumPointInfo
-from dephon.enum import Carrier, CorrectionEnergyType
+from dephon.enum import CorrectionType
 from dephon.plot_eigenvalues import EigenvaluePlotter
 
 logger = get_logger(__name__)
@@ -36,8 +37,7 @@ def _make_min_point_info_from_dir(_dir: Path):
         charge=energy_info.charge,
         structure=calc_results.structure,
         energy=energy_info.defect_energy.formation_energy,
-        energy_correction=energy_info.defect_energy.total_correction,
-        carriers=[],
+        correction_energy=energy_info.defect_energy.total_correction,
         initial_site_symmetry=defect_structure_info.initial_site_sym,
         final_site_symmetry=defect_structure_info.final_site_sym,
         parsed_dir=str(_dir.absolute()))
@@ -45,29 +45,20 @@ def _make_min_point_info_from_dir(_dir: Path):
 
 
 def make_dephon_init(args: Namespace):
-    ground_state, g_name = _make_min_point_info_from_dir(args.ground_dir)
-    excited_state, e_name = _make_min_point_info_from_dir(args.excited_dir)
+    state1, name1 = _make_min_point_info_from_dir(args.first_dir)
+    state2, name2 = _make_min_point_info_from_dir(args.second_dir)
 
-    if ground_state.charge - excited_state.charge == -1:
-        excited_state.carriers.append(Carrier.electron)
-        excited_state.energy += args.unitcell.cbm - args.unitcell.vbm
-
-    elif ground_state.charge - excited_state.charge == 1:
-        excited_state.carriers.append(Carrier.hole)
-
-    if g_name != e_name:
+    if name1 != name2:
         logger.warning("The names of ground and excited states are "
-                       f"{g_name} and {e_name}. Here, {g_name} is used.")
-    dephon_init = DephonInit(name=g_name,
-                          ground_state=ground_state,
-                          excited_state=excited_state,
-                          vbm=args.unitcell.vbm,
-                          cbm=args.unitcell.cbm,
-                          supercell_vbm=args.p_state.vbm_info.energy,
-                          supercell_cbm=args.p_state.cbm_info.energy)
+                       f"{name1} and {name2}. Here, {name1} is used.")
+    dephon_init = DephonInit(defect_name=name1,
+                             states=[state1, state2],
+                             vbm=args.unitcell.vbm,
+                             cbm=args.unitcell.cbm,
+                             supercell_vbm=args.p_state.vbm_info.bare_energy,
+                             supercell_cbm=args.p_state.cbm_info.bare_energy)
 
-    transfer_name = f"{excited_state.charge}to{ground_state.charge}"
-    path = Path(f"cc/{dephon_init.name}_{transfer_name}")
+    path = Path(f"cc/{dephon_init.defect_name}_{state1.charge}_{state2.charge}")
     if path.exists() is False:
         path.mkdir(parents=True)
 
@@ -82,54 +73,62 @@ def make_dephon_init(args: Namespace):
 
 def make_ccd_dirs(args: Namespace):
     os.chdir(args.calc_dir)
-    gs = args.dephon_init.ground_state.structure
-    es = args.dephon_init.excited_state.structure
-    e_to_g = es.interpolate(gs, nimages=args.e_to_g_div_ratios)
-    g_to_e = gs.interpolate(es, nimages=args.g_to_e_div_ratios)
+    d_init = args.dephon_init
+    s1 = d_init.states[0].structure
+    s2 = d_init.states[1].structure
+    s1_to_s2 = s1.interpolate(s2, nimages=args.first_to_second_div_ratios)
+    s2_to_s1 = s2.interpolate(s1, nimages=args.second_to_first_div_ratios)
+    initial_charges = [d_init.states[0].charge, d_init.states[1].charge]
+    final_charges = [d_init.states[1].charge, d_init.states[0].charge]
+    correction_energies = [d_init.states[0].correction_energy,
+                           d_init.states[1].correction_energy]
 
-    e_dQs = [args.dephon_init.dQ * (1.0 - r) for r in args.e_to_g_div_ratios]
-    g_dQs = [args.dephon_init.dQ * r for r in args.g_to_e_div_ratios]
-
-    for state, ratios, structures, dQs in \
-            [("excited", args.e_to_g_div_ratios, e_to_g, e_dQs),
-             ("ground", args.g_to_e_div_ratios, g_to_e, g_dQs)]:
-
-        if state == "ground":
-            charge = args.dephon_init.ground_state.charge
-            correction = args.dephon_init.ground_state.energy_correction
-        else:
-            charge = args.dephon_init.excited_state.charge
-            correction = args.dephon_init.excited_state.energy_correction
+    for ratios, structures, initial_charge, final_charge, corr in \
+            zip([args.first_to_second_div_ratios,
+                 args.second_to_first_div_ratios],
+                [s1_to_s2, s2_to_s1],
+                initial_charges, final_charges, correction_energies):
+        dQs = [args.dephon_init.dQ * r for r in ratios]
+        name = f"from_{initial_charge}_to_{final_charge}"
 
         for ratio, structure, dQ in zip(ratios, structures, dQs):
-            _make_ccd_dir(charge, state, ratio, structure, dQ, correction)
+            _make_ccd_dir(initial_charge, name, ratio, structure, dQ, corr)
+
+        single_ccd = Path(name) / "single_ccd.json"
+        if single_ccd.exists() is False:
+            SingleCcd(name=name, charge=initial_charge).to_json_file(single_ccd)
 
 
-def _make_ccd_dir(charge, state, ratio, structure, dQ, correction):
-    dir_ = Path(state) / f"disp_{ratio}"
+def _make_ccd_dir(charge, dirname, ratio, structure, dQ, correction):
+    dir_ = Path(dirname) / f"disp_{ratio}"
     try:
         dir_.mkdir(parents=True, exist_ok=True)
         logger.info(f"Directory {dir_} was created.")
 
-        structure.to(filename=dir_ / "POSCAR")
+        structure.to(filename=str(dir_ / "POSCAR"))
         (dir_ / "prior_info.yaml").write_text(
             yaml.dump({"charge": charge}), None)
-        image_structure_info = ImageStructureInfo(dQ=dQ,
-                                                  disp_ratio=ratio,
-                                                  correction_energy=correction)
-        image_structure_info.to_json_file(dir_ / "image_structure_info.json")
+        single_point_info = SinglePointInfo(dQ=dQ, disp_ratio=ratio)
+        single_point_info.to_json_file(dir_ / "single_point_info.json")
+
+        correction = DephonCorrection(correction, CorrectionType.extended_FNV)
+        correction.to_yaml_file(dir_ / "dephon_correction.json")
 
     except FileExistsError:
         logger.info(f"Directory {dir_} exists, so skip it.")
 
 
+# def make_single_point_infos(args: Namespace):
+
+
+
 def make_ccd(args: Namespace):
 
     def _inner(dir_: Path):
-        image_info: ImageStructureInfo = loadfn(dir_ / "image_structure_info.json")
-        if image_info.energy is None:
+        image_info: SinglePointInfo = loadfn(dir_ / "image_structure_info.json")
+        if image_info.bare_energy is None:
             calc_results = get_calc_results(dir_, False)
-            image_info.energy = calc_results.energy
+            image_info.bare_energy = calc_results.energy
         try:
             band_edge_state: BandEdgeState = loadfn(dir_ / "band_edge_states.json")
             image_info.is_shallow = band_edge_state.is_shallow
@@ -149,12 +148,12 @@ def make_ccd(args: Namespace):
                           excited_image_infos, ground_eg_image_infos)
 
     excited_name = f"excited + {args.dephon_init.semiconductor_type}"
-    ground = ImageStructureInfos("ground", ground_image_infos)
-    excited = ImageStructureInfos(excited_name, excited_image_infos)
-    ground_eg = ImageStructureInfos("ground + p + n", ground_eg_image_infos)
+    ground = SingleCcd("ground", ground_image_infos)
+    excited = SingleCcd(excited_name, excited_image_infos)
+    ground_eg = SingleCcd("ground + p + n", ground_eg_image_infos)
 
     ccd = Ccd(defect_name="test",
-              correction_energy_type=CorrectionEnergyType.extended_FNV,
+              correction_energy_type=CorrectionType.extended_FNV,
               image_infos_list=[ground, excited, ground_eg])
     ccd.to_json_file()
 
@@ -163,16 +162,16 @@ def _add_carrier_energies(dephon_init, ground_image_infos, excited_image_infos,
                           ground_eg_image_infos):
     fermi_level_from_vbm = dephon_init.delta_EF
     for v in ground_image_infos:
-        v.energy += dephon_init.ground_state.charge * fermi_level_from_vbm
+        v.bare_energy += dephon_init.single_ccd.charge * fermi_level_from_vbm
     for v in excited_image_infos:
-        v.energy += dephon_init.excited_state.charge * fermi_level_from_vbm
+        v.bare_energy += dephon_init.excited_state.charge * fermi_level_from_vbm
     for v in ground_eg_image_infos:
-        v.energy += dephon_init.band_gap
+        v.bare_energy += dephon_init.band_gap
 
 
 def set_fitting_q_range(args: Namespace):
     ccd: Ccd = args.ccd
-    imag = ccd.image_structure_info_by_name(args.image_name)
+    imag = ccd.single_ccd(args.image_name)
     imag.set_q_range(args.q_min, args.q_max)
     ccd.to_json_file()
     print(imag)
@@ -191,7 +190,7 @@ def plot_eigenvalues(args: Namespace):
     for d in glob(f'{args.dir}/disp_*'):
         try:
             orb_infos.append(loadfn(Path(d) / "band_edge_orbital_infos.json"))
-            imag_info: ImageStructureInfo = loadfn(Path(d) / "image_structure_info.json")
+            imag_info: SinglePointInfo = loadfn(Path(d) / "image_structure_info.json")
             qs.append(imag_info.dQ)
         except FileNotFoundError:
             logger.info(f"band_edge_orbital_infos.json does not exist in {d}")
@@ -206,7 +205,7 @@ def plot_eigenvalues(args: Namespace):
 
 def make_wswq_dirs(args: Namespace):
     for dir_ in args.ground_dirs:
-        _make_wswq_dir(dir_, args.dephon_init.ground_state.dir_path)
+        _make_wswq_dir(dir_, args.dephon_init.single_ccd.dir_path)
     for dir_ in args.excited_dirs:
         _make_wswq_dir(dir_, args.dephon_init.excited_state.dir_path)
 

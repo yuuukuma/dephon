@@ -38,7 +38,7 @@ class MinimumPointInfo(MSONable):
     structure: Structure
     # formation energy at Ef=VBM and chemical potentials being standard states.
     energy: float
-    energy_correction: float
+    correction_energy: float
     initial_site_symmetry: str
     final_site_symmetry: str
     # absolute dir
@@ -46,7 +46,7 @@ class MinimumPointInfo(MSONable):
 
     @property
     def corrected_energy(self):
-        return self.energy + self.energy_correction
+        return self.energy + self.correction_energy
 
     @property
     def degeneracy_by_symmetry_reduction(self):
@@ -61,7 +61,7 @@ class MinimumPointInfo(MSONable):
 
 @dataclass
 class DephonInit(MSONable, ToJsonFileMixIn):
-    name: str
+    defect_name: str
     states: List[MinimumPointInfo]
     vbm: float
     cbm: float
@@ -74,7 +74,13 @@ class DephonInit(MSONable, ToJsonFileMixIn):
     @property
     def band_gap(self):
         return self.cbm - self.vbm
-    #
+
+    def min_point_info_from_charge(self, charge: int):
+        for state in self.states:
+            if state.charge == charge:
+                return state
+        raise ValueError(f"Charge {charge} does not exist.")
+
     # @property
     # def delta_EF(self):
     #     return self.band_gap if self.semiconductor_type == "n" else 0.0
@@ -82,7 +88,7 @@ class DephonInit(MSONable, ToJsonFileMixIn):
     # @property
     # def semiconductor_type(self) -> str:
     #     trap_charge_by_excited_state = \
-    #         - (self.excited_state.charge - self.ground_state.charge)
+    #         - (self.excited_state.charge - self.single_ccd.charge)
     #     if trap_charge_by_excited_state == 1:
     #         return "p"
     #     else:
@@ -107,7 +113,7 @@ class DephonInit(MSONable, ToJsonFileMixIn):
         return (self.dQ / self.dR) ** 2
 
     def __str__(self):
-        result = [f"name: {self.name}"]
+        result = [f"name: {self.defect_name}"]
         table = [["vbm", self.vbm, "supercell vbm", self.supercell_vbm],
                  ["cbm", self.cbm, "supercell cbm", self.supercell_cbm],
                  ["dQ (amu^0.5 Å)", self.dQ],
@@ -127,7 +133,7 @@ class DephonInit(MSONable, ToJsonFileMixIn):
             table.append(
                 [state.charge, state.initial_site_symmetry,
                  state.final_site_symmetry, state.energy,
-                 state.energy_correction, state.corrected_energy])
+                 state.correction_energy, state.corrected_energy])
             if last_energy:
                 table[-1].append(last_energy - state.corrected_energy)
             last_energy = state.corrected_energy

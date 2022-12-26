@@ -6,8 +6,7 @@ import pytest
 from pymatgen.core import Lattice, Structure, Element
 from vise.tests.helpers.assertion import assert_json_roundtrip
 
-from dephon.config_coord_test import band_edges
-from dephon.dephon_init import get_dR, MinimumPointInfo, DephonInit
+from dephon.dephon_init import get_dR, MinimumPointInfo
 
 
 def test_get_dR():
@@ -21,31 +20,12 @@ def test_get_dR():
 def minimum_point_info(ground_structure):
     return MinimumPointInfo(charge=-1,
                             structure=ground_structure,
+                            bare_energy=-100.0,
                             energy=10.0,
-                            energy_correction=1.0,
+                            correction_energy=1.0,
                             initial_site_symmetry="4mm",
                             final_site_symmetry="2/m",
                             parsed_dir="/path/to/min_point")
-
-
-@pytest.fixture
-def dephon_init(ground_structure, excited_structure):
-    va_o1_0 = MinimumPointInfo(charge=0,
-                               structure=ground_structure,
-                               energy=11.0,
-                               energy_correction=-1.0,
-                               initial_site_symmetry="2mm",
-                               final_site_symmetry="2",
-                               parsed_dir="/path/to/Va_O1_0")
-    va_o1_1 = MinimumPointInfo(charge=1,
-                               structure=excited_structure,
-                               energy=12.0,
-                               energy_correction=-1.0,
-                               initial_site_symmetry="2mm",
-                               final_site_symmetry="2",
-                               parsed_dir="/path/to/Va_O1_1")
-    # transition level = -1.0 from CBM
-    return DephonInit(name="Va_O", states=[va_o1_0, va_o1_1], **band_edges)
 
 
 def test_json_roundtrip(dephon_init, tmpdir):
@@ -61,6 +41,11 @@ def test_dephon_init_dQ(dephon_init):
     assert dephon_init.dQ == pytest.approx(expected)
 
 
+def test_dephon_init_min_point_info_from_charge(dephon_init):
+    actual = dephon_init.min_point_info_from_charge(charge=1)
+    assert actual == dephon_init.states[1]
+
+
 def test_dephon_init_volume(dephon_init):
     assert dephon_init.volume == 1000.0
 
@@ -70,7 +55,7 @@ def test_ccd_string(dephon_init):
     print(dephon_init)
     expected = """name: Va_O
 vbm             1.000  supercell vbm  1.100
-cbm             2.000  supercell cbm  1.900
+cbm             3.000  supercell cbm  2.900
 dQ (amu^0.5 Å)  2.459
 dR (Å)          2.449
 M (amu)         1.008

@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 #  Copyright (c) 2022 Kumagai group.
-from dataclasses import dataclass
+from copy import deepcopy
+from dataclasses import dataclass, field
+from math import isclose
 from typing import List
 
 import numpy as np
@@ -14,12 +16,12 @@ from vise.util.logger import get_logger
 from vise.util.matplotlib import float_to_int_formatter
 from vise.util.mix_in import ToJsonFileMixIn
 
-from dephon.enum import CorrectionEnergyType, Carrier
+from dephon.enum import CorrectionType, Carrier
 
 logger = get_logger(__name__)
 
 
-_imag_headers = ["dQ", "disp ratio", "energy", "corr. energy",
+_imag_headers = ["dQ", "disp ratio", "corr. energy", "relative energy",
                  "used for fitting?", "is shallow?"]
 
 
@@ -27,39 +29,22 @@ _imag_headers = ["dQ", "disp ratio", "energy", "corr. energy",
 class SinglePointInfo(MSONable, ToJsonFileMixIn):
     dQ: float
     disp_ratio: float
-    # determined from first principles calculations
-    energy: float = None  # absolute energy
+    corrected_energy: float = None  # energy obtained directly from DFT calculations
     is_shallow: bool = None
-    correction_energy: float = None
-    correction_method: CorrectionEnergyType = None
+    correction_method: CorrectionType = None
     used_for_fitting: bool = None
     base_energy: float = 0.0
 
     @property
-    def rel_energy(self):
-        if self.energy is None:
+    def relative_energy(self):
+        if self.corrected_energy is None:
             return None
-        return self.energy - self.base_energy
-
-    @property
-    def corrected_energy(self):
-        try:
-            return self.energy + self.correction_energy
-        except TypeError:
-            return None
-
-    @property
-    def relative_corrected_energy(self):
-        try:
-            return self.rel_energy + self.correction_energy
-        except TypeError:
-            return None
+        return self.corrected_energy - self.base_energy
 
     @property
     def list_data(self):
-        result = [self.dQ, self.disp_ratio, self.rel_energy,
-                  self.correction_energy, self.used_for_fitting,
-                  self.is_shallow]
+        result = [self.dQ, self.disp_ratio, self.corrected_energy,
+                  self.relative_energy, self.used_for_fitting, self.is_shallow]
         return ["-" if x is None else x for x in result]
 
     def __str__(self):
@@ -70,22 +55,29 @@ class SinglePointInfo(MSONable, ToJsonFileMixIn):
 @dataclass
 class SingleCcd(MSONable, ToJsonFileMixIn):
     name: str
-    point_infos: List[SinglePointInfo]
-    carriers: List[Carrier] = None
+    charge: int
+    point_infos: List[SinglePointInfo] = field(default_factory=list)
+    carriers: List[Carrier] = field(default_factory=list)
 
     def __post_init__(self):
         self.point_infos.sort(key=lambda x: x.dQ)
 
     def set_base_energy(self, base_energy=None):
         if base_energy is None:
-            base_energy = min([i.corrected_energy for i in self.point_infos])
+            base_energy = self.disp_point_info(0.0).corrected_energy
 
         for i in self.point_infos:
             i.base_energy = base_energy
 
-    @property
-    def lowest_energy(self):
-        return min([i.relative_corrected_energy for i in self.point_infos])
+    def shift_energy(self, shift_energy):
+        for i in self.point_infos:
+            i.corrected_energy += shift_energy
+
+    def disp_point_info(self, disp) -> SinglePointInfo:
+        for point_info in self.point_infos:
+            if isclose(point_info.disp_ratio, disp):
+                return point_info
+        raise ValueError()
 
     def dQs_and_energies(self, only_used_for_fitting=False):
         dQs, energies = [], []
@@ -93,7 +85,7 @@ class SingleCcd(MSONable, ToJsonFileMixIn):
             if only_used_for_fitting and imag.used_for_fitting is not True:
                 continue
             dQs.append(imag.dQ)
-            energies.append(imag.relative_corrected_energy)
+            energies.append(imag.relative_energy)
         return dQs, energies
 
     def omega(self, ax: Axes = None):
@@ -102,6 +94,21 @@ class SingleCcd(MSONable, ToJsonFileMixIn):
             raise ValueError("The number of Q points is not sufficient.")
 
         return get_omega_from_PES(np.array(dQs), np.array(energies), ax=ax)
+
+    def energy_shifted_single_ccd(self, dQ_0_energy) -> "SingleCcd":
+        base_energy = self.disp_point_info(0.0).corrected_energy - dQ_0_energy
+        result = deepcopy(self)
+        for i in result.point_infos:
+            i.base_energy = base_energy
+        return result
+
+    def dQ_reverted_single_ccd(self) -> "SingleCcd":
+        result = deepcopy(self)
+        disp1_dQ = self.disp_point_info(1.0).dQ
+        for i in result.point_infos:
+            i.dQ = (1.0 - i.disp_ratio) * disp1_dQ
+        result.point_infos.sort(key=lambda x: x.dQ)
+        return result
 
     def add_plot(self, ax, color):
         dQs, energies = self.dQs_and_energies()
@@ -147,10 +154,6 @@ class Ccd(MSONable, ToJsonFileMixIn):
                 return i
             names.append(i.name)
         raise ValueError(f"Choose state name from {' '.join(names)}")
-
-    @property
-    def lowest_energy(self):
-        return min([i.lowest_energy for i in self.ccds])
 
     def __str__(self):
         result = [f"name: {self.defect_name}"]

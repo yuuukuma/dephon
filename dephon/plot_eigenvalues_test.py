@@ -25,13 +25,13 @@ def test_eigenvalue_plotter_no_mag(mocker):
           OrbitalInfo(2.0, {}, 0.0)]]]
 
     i2 = deepcopy(i1)
-    i2.orbital_infos[0][0][2].energy = 0.1
+    i2.orbital_infos[0][0][2].bare_energy = 0.1
 
     i3 = deepcopy(i1)
-    i3.orbital_infos[0][0][2].energy = 0.2
+    i3.orbital_infos[0][0][2].bare_energy = 0.2
 
     i4 = deepcopy(i1)
-    i4.orbital_infos[0][0][2].energy = 0.3
+    i4.orbital_infos[0][0][2].bare_energy = 0.3
 
     plotter = EigenvaluePlotter(orb_infos=[i1, i2, i3, i4],
                                 qs=[-1.0, 0.0, 1.0, 2.0],
