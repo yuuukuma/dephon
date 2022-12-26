@@ -26,14 +26,14 @@ def test_main_make_dephon_init(mocker):
         {"perfect_band_edge_state.json": mock_p_band_edge_state})
     mocker.patch("pydefect.cli.main.loadfn", side_effect=side_effect)
     parsed_args = parse_args_main(["mdi",
-                                   "-ed", "Va_O1_0",
-                                   "-gd", "Va_O1_1",
+                                   "-fd", "Va_O1_0",
+                                   "-sd", "Va_O1_1",
                                    "-u", "unitcell.yaml",
                                    "-pbes", "perfect_band_edge_state.json"
                                    ])
     expected = Namespace(
-        excited_dir=Path("Va_O1_0"),
-        ground_dir=Path("Va_O1_1"),
+        first_dir=Path("Va_O1_0"),
+        second_dir=Path("Va_O1_1"),
         unitcell=mock_unitcell.from_yaml.return_value,
         p_state=mock_p_band_edge_state,
         func=parsed_args.func)

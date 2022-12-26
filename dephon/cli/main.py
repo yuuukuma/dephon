@@ -46,11 +46,11 @@ def parse_args_main(args):
         aliases=['mdi'])
 
     parser_make_dephon_init.add_argument(
-        "-ed", "--excited_dir", type=Path, required=True,
-        help="Directory for an excited state defect, e.g., Va_O1_0.")
+        "-fd", "--first_dir", type=Path, required=True,
+        help="First directory considered for ccd, e.g., Va_O1_0.")
     parser_make_dephon_init.add_argument(
-        "-gd", "--ground_dir", type=Path, required=True,
-        help="Directory for a ground state defect, e.g., Va_O1_1.")
+        "-sd", "--second_dir", type=Path, required=True,
+        help="Second directory considered for ccd, e.g., Va_O1_1.")
     parser_make_dephon_init.set_defaults(func=make_dephon_init)
 
     # -- make_ccd_dirs -----------------------------------
