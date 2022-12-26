@@ -67,7 +67,7 @@ def parse_args_main(args):
         default=[-0.4, -0.2, 0.0, 0.2, 0.4, 0.6, 0.8],
         help="Dividing ratios from first to second charge state structures.")
     parser_add_ccd_dirs.add_argument(
-        "-ger", "--g_to_e_div_ratios", type=float, nargs="+",
+        "-sfr", "--second_to_first_div_ratios", type=float, nargs="+",
         default=[-0.4, -0.2, 0.0, 0.2, 0.4, 0.6, 0.8],
         help="Dividing ratios from second to first charge state structures.")
     parser_add_ccd_dirs.add_argument(

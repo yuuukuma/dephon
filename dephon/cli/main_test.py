@@ -41,7 +41,7 @@ def test_main_make_dephon_init(mocker):
     mock_unitcell.from_yaml.assert_called_once_with("unitcell.yaml")
 
 
-def test_main_make_dirs_wo_args(mocker):
+def test_main_make_dirs(mocker):
     mock_dephon_init = mocker.Mock(spec=DephonInit, autospec=True)
     side_effect = loadfn_effect({"dephon_init.json": mock_dephon_init})
     mocker.patch("dephon.cli.main.loadfn", side_effect=side_effect)
@@ -54,6 +54,17 @@ def test_main_make_dirs_wo_args(mocker):
         calc_dir=Path.cwd(),
         func=parsed_args.func)
     assert parsed_args == expected
+
+    parsed_args = parse_args_main(["mcd", "-fsr", "0.0", "-sfr", "0.1",
+                                   "-d", "dirname"])
+    expected = Namespace(
+        dephon_init=mock_dephon_init,
+        first_to_second_div_ratios=[0.0],
+        second_to_first_div_ratios=[0.1],
+        calc_dir=Path("dirname"),
+        func=parsed_args.func)
+    assert parsed_args == expected
+
 
 
 def test_main_make_ccd_wo_args(mocker):
