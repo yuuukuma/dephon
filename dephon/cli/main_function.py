@@ -55,8 +55,8 @@ def make_dephon_init(args: Namespace):
                              states=[state1, state2],
                              vbm=args.unitcell.vbm,
                              cbm=args.unitcell.cbm,
-                             supercell_vbm=args.p_state.vbm_info.bare_energy,
-                             supercell_cbm=args.p_state.cbm_info.bare_energy)
+                             supercell_vbm=args.p_state.vbm_info.energy,
+                             supercell_cbm=args.p_state.cbm_info.energy)
 
     path = Path(f"cc/{dephon_init.defect_name}_{state1.charge}_{state2.charge}")
     if path.exists() is False:
