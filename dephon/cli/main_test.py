@@ -6,6 +6,7 @@ from pathlib import Path
 from pydefect.analyzer.band_edge_states import PerfectBandEdgeState
 
 from dephon.cli.main import parse_args_main
+from dephon.cli.main_function import make_single_point_infos
 from dephon.config_coord import Ccd
 from dephon.dephon_init import DephonInit
 
@@ -65,6 +66,11 @@ def test_main_make_dirs(mocker):
         func=parsed_args.func)
     assert parsed_args == expected
 
+
+def test_main_make_single_point_infos():
+    parsed_args = parse_args_main(["mspi", "-d", "disp_0.0"])
+    expected = Namespace(dirs=[Path("disp_0.0")], func=make_single_point_infos)
+    assert parsed_args == expected
 
 
 def test_main_make_ccd_wo_args(mocker):

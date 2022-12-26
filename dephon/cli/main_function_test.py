@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 #  Copyright (c) 2022 Kumagai group.
+import shutil
 from argparse import Namespace
 from pathlib import Path
 
@@ -11,7 +12,7 @@ from vise.input_set.incar import ViseIncar
 from vise.input_set.prior_info import PriorInfo
 
 from dephon.cli.main_function import make_dephon_init, make_ccd, plot_ccd, \
-    make_ccd_dirs, make_wswq_dirs
+    make_ccd_dirs, make_wswq_dirs, make_single_point_infos
 from dephon.config_coord import Ccd, SinglePointInfo, SingleCcd
 from dephon.corrections import DephonCorrection
 from dephon.dephon_init import DephonInit, MinimumPointInfo
@@ -90,9 +91,10 @@ def test_make_ccd_dirs(tmpdir, ground_structure, excited_structure,
     actual = Structure.from_file("from_1_to_0/disp_1.0/POSCAR")
     assert actual == excited_structure
 
-    actual = DephonCorrection.from_yaml("from_1_to_0/disp_1.0/dephon_correction.json")
+    actual = DephonCorrection.from_yaml("from_1_to_0/disp_1.0/dephon_correction.yaml")
     expected = DephonCorrection(200.0, CorrectionType.extended_FNV)
     assert actual == expected
+
 
 # @pytest.fixture
 # def ccd():
@@ -105,9 +107,24 @@ def test_make_ccd_dirs(tmpdir, ground_structure, excited_structure,
 #                                    SinglePointInfo(0.2, -1.8, 2.0)])
 #
 #
-# def test_make_single_point_infos(tmpdir):
 
 
+def test_make_single_point_infos(test_files, tmpdir):
+    tmpdir.chdir()
+    src = Path(test_files / "NaP/Va_P1_-1_0/from_0_to_-1/disp_0.0")
+    print(src)
+    shutil.copytree(src, Path.cwd() / "disp_0.0")
+    args = Namespace(dirs=[Path("disp_0.0")])
+    make_single_point_infos(args)
+
+    actual = loadfn("disp_0.0/single_point_info.json")
+    expected = SinglePointInfo(dQ=0.0,
+                               disp_ratio=0.0,
+                               corrected_energy=-2223.75521961,
+                               is_shallow=False,
+                               correction_method=CorrectionType.extended_FNV
+                               )
+    assert actual == expected
 
 
 def test_make_ccd(tmpdir, mocker, ground_structure):

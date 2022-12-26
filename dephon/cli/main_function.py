@@ -102,7 +102,7 @@ def make_ccd_dirs(args: Namespace):
 def _make_ccd_dir(charge, dirname, ratio, structure, dQ, correction):
     dir_ = Path(dirname) / f"disp_{ratio}"
     try:
-        dir_.mkdir(parents=True, exist_ok=True)
+        dir_.mkdir(parents=True)
         logger.info(f"Directory {dir_} was created.")
 
         structure.to(filename=str(dir_ / "POSCAR"))
@@ -112,14 +112,25 @@ def _make_ccd_dir(charge, dirname, ratio, structure, dQ, correction):
         single_point_info.to_json_file(dir_ / "single_point_info.json")
 
         correction = DephonCorrection(correction, CorrectionType.extended_FNV)
-        correction.to_yaml_file(dir_ / "dephon_correction.json")
+        correction.to_yaml_file(dir_ / "dephon_correction.yaml")
 
     except FileExistsError:
         logger.info(f"Directory {dir_} exists, so skip it.")
 
 
-# def make_single_point_infos(args: Namespace):
+def make_single_point_infos(args: Namespace):
+    def _inner(dir_: Path):
+        calc_results = get_calc_results(dir_, False)
+        band_edge_state: BandEdgeState = loadfn(dir_ / "band_edge_states.json")
+        correction = DephonCorrection.from_yaml(dir_ / "dephon_correction.yaml")
 
+        sp_info: SinglePointInfo = loadfn(dir_ / "single_point_info.json")
+        sp_info.corrected_energy = calc_results.energy + correction.energy
+        sp_info.is_shallow = band_edge_state.is_shallow
+        sp_info.correction_method = correction.correction_type
+        sp_info.to_json_file(dir_ / "single_point_info.json")
+
+    parse_dirs(args.dirs, _inner, verbose=True)
 
 
 def make_ccd(args: Namespace):

@@ -11,7 +11,7 @@ from pymatgen.io.vasp.inputs import UnknownPotcarWarning
 
 from dephon.cli.main_function import make_dephon_init, make_ccd, \
     make_ccd_dirs, plot_ccd, plot_eigenvalues, set_fitting_q_range, \
-    make_wswq_dirs
+    make_wswq_dirs, make_single_point_infos
 from dephon.version import __version__
 
 warnings.simplefilter('ignore', UnknownPotcarWarning)
@@ -64,17 +64,32 @@ def parse_args_main(args):
 
     parser_add_ccd_dirs.add_argument(
         "-fsr", "--first_to_second_div_ratios", type=float, nargs="+",
-        default=[-0.4, -0.2, 0.0, 0.2, 0.4, 0.6, 0.8],
+        default=[-0.2, 0.0, 0.2, 0.4, 0.6, 0.8],
         help="Dividing ratios from first to second charge state structures.")
     parser_add_ccd_dirs.add_argument(
         "-sfr", "--second_to_first_div_ratios", type=float, nargs="+",
-        default=[-0.4, -0.2, 0.0, 0.2, 0.4, 0.6, 0.8],
+        default=[-0.2, 0.0, 0.2, 0.4, 0.6, 0.8],
         help="Dividing ratios from second to first charge state structures.")
     parser_add_ccd_dirs.add_argument(
         "-d", "--calc_dir", type=Path, default=Path.cwd(),
         help="Directory where ground and excited directories are created.")
     parser_add_ccd_dirs.set_defaults(
         func=make_ccd_dirs)
+
+    # -- make_single_point_infos -----------------------------------
+    parser_make_single_point_infos = subparsers.add_parser(
+        name="make_single_point_infos",
+        description="Make single_point_info.json at each directory. "
+                    "Before running this command, calc_results.json and "
+                    "band_edge_states.json files need to be created using "
+                    "pydefect.",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+        aliases=['mspi'])
+
+    parser_make_single_point_infos.add_argument(
+        "-d", "--dirs", type=Path, nargs="+",
+        help="Directories to create single_point_info.json file.")
+    parser_make_single_point_infos.set_defaults(func=make_single_point_infos)
 
     # -- make_ccd -----------------------------------
     parser_make_ccd = subparsers.add_parser(
