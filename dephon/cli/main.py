@@ -63,14 +63,13 @@ def parse_args_main(args):
         aliases=['mcd'])
 
     parser_add_ccd_dirs.add_argument(
-        "-egr", "--e_to_g_div_ratios", type=float, nargs="+",
+        "-fsr", "--first_to_second_div_ratios", type=float, nargs="+",
         default=[-0.4, -0.2, 0.0, 0.2, 0.4, 0.6, 0.8],
-        help="Dividing ratios from excited state to ground state structures."
-             "Thus, 1.0 means ground state structure")
+        help="Dividing ratios from first to second charge state structures.")
     parser_add_ccd_dirs.add_argument(
         "-ger", "--g_to_e_div_ratios", type=float, nargs="+",
         default=[-0.4, -0.2, 0.0, 0.2, 0.4, 0.6, 0.8],
-        help="Dividing ratios from ground state to excited state structures.")
+        help="Dividing ratios from second to first charge state structures.")
     parser_add_ccd_dirs.add_argument(
         "-d", "--calc_dir", type=Path, default=Path.cwd(),
         help="Directory where ground and excited directories are created.")

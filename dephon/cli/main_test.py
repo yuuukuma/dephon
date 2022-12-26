@@ -49,8 +49,8 @@ def test_main_make_dirs_wo_args(mocker):
     parsed_args = parse_args_main(["mcd"])
     expected = Namespace(
         dephon_init=mock_dephon_init,
-        e_to_g_div_ratios=[-0.4, -0.2, 0.0, 0.2, 0.4, 0.6, 0.8],
-        g_to_e_div_ratios=[-0.4, -0.2, 0.0, 0.2, 0.4, 0.6, 0.8],
+        first_to_second_div_ratios=[-0.4, -0.2, 0.0, 0.2, 0.4, 0.6, 0.8],
+        second_to_first_div_ratios=[-0.4, -0.2, 0.0, 0.2, 0.4, 0.6, 0.8],
         calc_dir=Path.cwd(),
         func=parsed_args.func)
     assert parsed_args == expected
