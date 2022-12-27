@@ -11,7 +11,7 @@ from pymatgen.io.vasp.inputs import UnknownPotcarWarning
 
 from dephon.cli.main_function import make_dephon_init, make_ccd, \
     make_ccd_dirs, plot_ccd, plot_eigenvalues, set_fitting_q_range, \
-    make_wswq_dirs, make_single_point_infos
+    make_wswq_dirs, make_single_point_infos, make_single_ccd
 from dephon.version import __version__
 
 warnings.simplefilter('ignore', UnknownPotcarWarning)
@@ -72,7 +72,7 @@ def parse_args_main(args):
         help="Dividing ratios from second to first charge state structures.")
     parser_add_ccd_dirs.add_argument(
         "-d", "--calc_dir", type=Path, default=Path.cwd(),
-        help="Directory where ground and excited directories are created.")
+        help="Directory where directories are created.")
     parser_add_ccd_dirs.set_defaults(
         func=make_ccd_dirs)
 
@@ -90,6 +90,21 @@ def parse_args_main(args):
         "-d", "--dirs", type=Path, nargs="+",
         help="Directories to create single_point_info.json file.")
     parser_make_single_point_infos.set_defaults(func=make_single_point_infos)
+
+    # -- make_single_ccd -----------------------------------
+    parser_make_single_ccd = subparsers.add_parser(
+        name="make_single_ccd",
+        description="Make single_point_info.json at each directory. "
+                    "Before running this command, calc_results.json and "
+                    "band_edge_states.json files need to be created using "
+                    "pydefect.",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+        aliases=['msc'])
+
+    parser_make_single_ccd.add_argument(
+        "-d", "--dirs", type=Path, nargs="+",
+        help="Directories to create single_ccd.json file.")
+    parser_make_single_ccd.set_defaults(func=make_single_ccd)
 
     # -- make_ccd -----------------------------------
     parser_make_ccd = subparsers.add_parser(

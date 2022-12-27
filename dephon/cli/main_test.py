@@ -73,6 +73,12 @@ def test_main_make_single_point_infos():
     assert parsed_args == expected
 
 
+def test_main_make_single_ccd():
+    parsed_args = parse_args_main(["msc", "-d", "disp_0.0"])
+    expected = Namespace(dirs=[Path("disp_0.0")], func=make_single_point_infos)
+    assert parsed_args == expected
+
+
 def test_main_make_ccd_wo_args(mocker):
     mock_dephon_init = mocker.Mock(spec=DephonInit, autospec=True)
     side_effect = loadfn_effect({"dephon_init.json": mock_dephon_init})
