@@ -133,6 +133,15 @@ def make_single_point_infos(args: Namespace):
     parse_dirs(args.dirs, _inner, verbose=True)
 
 
+def make_single_ccd(args: Namespace):
+    def _inner(dir_: Path):
+        return loadfn(dir_ / "single_point_info.json")
+
+    single_ccd: SingleCcd = loadfn("single_ccd.json")
+    single_ccd.point_infos = parse_dirs(args.dirs, _inner, verbose=True)
+    single_ccd.to_json_file("single_ccd.json")
+
+
 def make_ccd(args: Namespace):
 
     def _inner(dir_: Path):

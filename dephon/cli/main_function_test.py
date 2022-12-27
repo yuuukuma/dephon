@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 #  Copyright (c) 2022 Kumagai group.
+import os
 import shutil
 from argparse import Namespace
 from pathlib import Path
@@ -12,7 +13,7 @@ from vise.input_set.incar import ViseIncar
 from vise.input_set.prior_info import PriorInfo
 
 from dephon.cli.main_function import make_dephon_init, make_ccd, plot_ccd, \
-    make_ccd_dirs, make_wswq_dirs, make_single_point_infos
+    make_ccd_dirs, make_wswq_dirs, make_single_point_infos, make_single_ccd
 from dephon.config_coord import Ccd, SinglePointInfo, SingleCcd
 from dephon.corrections import DephonCorrection
 from dephon.dephon_init import DephonInit, MinimumPointInfo
@@ -111,7 +112,7 @@ def test_make_ccd_dirs(tmpdir, ground_structure, excited_structure,
 
 def test_make_single_point_infos(test_files, tmpdir):
     tmpdir.chdir()
-    src = Path(test_files / "NaP/Va_P1_-1_0/from_0_to_-1/disp_0.0")
+    src = Path(test_files / "NaP/Va_P1_-1_0/from_0_to_-1_before_make_single_point_infos/disp_0.0")
     print(src)
     shutil.copytree(src, Path.cwd() / "disp_0.0")
     args = Namespace(dirs=[Path("disp_0.0")])
@@ -122,8 +123,30 @@ def test_make_single_point_infos(test_files, tmpdir):
                                disp_ratio=0.0,
                                corrected_energy=-2223.75521961,
                                is_shallow=False,
-                               correction_method=CorrectionType.extended_FNV
-                               )
+                               correction_method=CorrectionType.extended_FNV)
+    assert actual == expected
+
+
+def test_make_single_ccd(test_files, tmpdir):
+    tmpdir.chdir()
+    print(tmpdir)
+    src = Path(test_files / "NaP/Va_P1_-1_0/from_0_to_-1_after_make_single_point_infos")
+    shutil.copytree(src, Path.cwd() / "from_0_to_-1")
+    os.chdir(Path("from_0_to_-1"))
+    args = Namespace(dirs=[Path("disp_0.0")])
+    make_single_ccd(args)
+
+    actual = loadfn("single_ccd.json")
+
+    point_info_disp = \
+        SinglePointInfo(dQ=0.0,
+                        disp_ratio=0.0,
+                        corrected_energy=-2223.75521961,
+                        is_shallow=False,
+                        correction_method=CorrectionType.extended_FNV)
+    expected = SingleCcd(name="from_0_to_-1",
+                         charge=0,
+                         point_infos=[point_info_disp])
     assert actual == expected
 
 
