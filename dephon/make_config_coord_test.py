@@ -31,7 +31,7 @@ def dephon_init(ground_structure, excited_structure):
                       **band_edges)
 
 
-common = dict(is_shallow=False, used_for_fitting=True)
+common = dict(is_shallow=False, used_for_fitting=False)
 
 
 def test(excited_structure, ground_structure, dephon_init):
@@ -63,38 +63,41 @@ def test(excited_structure, ground_structure, dephon_init):
                   point_infos=[SinglePointInfo(dQ=0.0,
                                                disp_ratio=0.0,
                                                corrected_energy=-100.0,
-                                               base_energy=-110.0,
+                                               base_energy=-100.0,
                                                **common),
                                SinglePointInfo(dQ=10.0,
                                                disp_ratio=1.0,
                                                corrected_energy=-90.0,
-                                               base_energy=-110.0,
+                                               base_energy=-100.0,
                                                **common)]),
-        SingleCcd(name="excited + h",
+        SingleCcd(name="excited + e",
                   charge=1,
-                  carriers=[Carrier.hole],
+                  carriers=[Carrier.electron],
                   point_infos=[SinglePointInfo(dQ=0.0,
                                                disp_ratio=1.0,
-                                               corrected_energy=-90.0,
-                                               base_energy=-111.0,
+                                               # same as excited
+                                               corrected_energy=-87.0,
+                                               base_energy=-100.0,
                                                **common),
                                SinglePointInfo(dQ=10.0,
                                                disp_ratio=0.0,
-                                               corrected_energy=-100.0,
-                                               base_energy=-111.0,
+                                               # same as excited
+                                               corrected_energy=-97.0,
+                                               base_energy=-100.0,
                                                **common)]),
         SingleCcd(name="ground + h + e",
                   charge=0,
                   carriers=[Carrier.hole, Carrier.electron],
                   point_infos=[SinglePointInfo(dQ=0.0,
                                                disp_ratio=0.0,
+                                               # band gap is added to ground
                                                corrected_energy=-98.0,
-                                               base_energy=-110.0,
+                                               base_energy=-100.0,
                                                **common),
                                SinglePointInfo(dQ=10.0,
                                                disp_ratio=1.0,
                                                corrected_energy=-88.0,
-                                               base_energy=-110.0,
+                                               base_energy=-100.0,
                                                **common)])])
     assert actual == expected
 

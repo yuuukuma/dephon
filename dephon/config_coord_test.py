@@ -36,13 +36,13 @@ def test_single_point_info_corrected_energy(single_point_min_info,
 def test_image_structure_str(single_point_min_info,
                              single_point_max_info):
     actual = single_point_min_info.__str__()
-    expected = """  dQ    disp ratio  corr. energy    relative energy    used for fitting?    is shallow?
-1.00          0.10  -               -                  -                    -"""
+    expected = """   dQ    disp ratio  corr. energy    relative energy    used for fitting?    is shallow?
+1.000         0.100"""
     assert actual == expected
 
     actual = single_point_max_info.__str__()
-    expected = """  dQ    disp ratio    corr. energy    relative energy  used for fitting?    is shallow?
-1.00          0.10            5.00               4.00  True                 True"""
+    expected = """   dQ    disp ratio    corr. energy    relative energy  used for fitting?    is shallow?
+1.000         0.100           5.000              4.000  True                 True"""
     assert actual == expected
 
 
@@ -88,11 +88,9 @@ def test_single_ccd_omega(single_ccd):
 
 
 def test_energy_shifted_single_ccd(single_ccd):
-    actual = single_ccd.energy_shifted_single_ccd(dQ_0_energy=1.0)
-    expected = deepcopy(single_ccd)
-    for i in expected.point_infos:
-        i.base_energy = 2.4
-    assert_dataclass_almost_equal(actual, expected)
+    actual = deepcopy(single_ccd)
+    actual.shift_energy(energy=1.0)
+    assert actual.point_infos[0].corrected_energy == 4.4
 
 
 def test_dQ_reverted_single_ccd(single_ccd):
@@ -109,15 +107,15 @@ def test_dQ_reverted_single_ccd(single_ccd):
 def test_single_ccd_str(single_ccd):
     single_ccd.set_base_energy()
     actual = single_ccd.__str__()
-    print(actual)
     expected = """name: from_0_to_1
-omega: 0.10
+charge: 0
+omega: 0.098
 carriers: h e
-  dQ    disp ratio    corr. energy    relative energy  used for fitting?    is shallow?
-0.00          0.00            3.40               0.00  True                 False
-1.00          0.50            2.20              -1.20  True                 False
-2.00          1.00            3.30              -0.10  True                 False
-3.00          1.50            3.50               0.10  False                False"""
+   dQ    disp ratio    corr. energy    relative energy  used for fitting?    is shallow?
+0.000         0.000           3.400              0.000  True                 False
+1.000         0.500           2.200             -1.200  True                 False
+2.000         1.000           3.300             -0.100  True                 False
+3.000         1.500           3.500              0.100  False                False"""
     assert actual == expected
 
 
@@ -147,20 +145,22 @@ def test_ccd_str(ccd):
     expected = """name: Va_O1
 --------------------------------------------------
 name: from_0_to_1
-omega: 0.10
+charge: 0
+omega: 0.098
 carriers: h e
-  dQ    disp ratio    corr. energy    relative energy  used for fitting?    is shallow?
-0.00          0.00            3.40               3.40  True                 False
-1.00          0.50            2.20               2.20  True                 False
-2.00          1.00            3.30               3.30  True                 False
-3.00          1.50            3.50               3.50  False                False
+   dQ    disp ratio    corr. energy    relative energy  used for fitting?    is shallow?
+0.000         0.000           3.400              3.400  True                 False
+1.000         0.500           2.200              2.200  True                 False
+2.000         1.000           3.300              3.300  True                 False
+3.000         1.500           3.500              3.500  False                False
 --------------------------------------------------
 name: from_1_to_0
+charge: 1
 omega: N.A.
-  dQ    disp ratio    corr. energy    relative energy  used for fitting?    is shallow?
-1.00          0.80           10.30              10.30  -                    False
-2.00          0.90           10.20              10.20  -                    False
-3.00          1.00           10.10              10.10  -                    False"""
+   dQ    disp ratio    corr. energy    relative energy  used for fitting?    is shallow?
+1.000         0.800          10.300             10.300                       False
+2.000         0.900          10.200             10.200                       False
+3.000         1.000          10.100             10.100                       False"""
     assert actual == expected
 
 

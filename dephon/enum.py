@@ -10,9 +10,12 @@ class Carrier(MSONable, ExtendedEnum):
 
     @property
     def charge(self):
-        if self.electron:
+        if self == self.electron:
             return -1
-        return 1
+        elif self == self.hole:
+            return 1
+        else:
+            raise ValueError
 
     @classmethod
     def from_carrier_charge(cls, carrier_charge):

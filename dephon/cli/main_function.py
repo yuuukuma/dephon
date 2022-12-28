@@ -2,7 +2,6 @@
 #  Copyright (c) 2022 Kumagai group.
 import os
 from argparse import Namespace
-from copy import deepcopy
 from glob import glob
 from pathlib import Path
 
@@ -23,6 +22,7 @@ from dephon.config_coord import SinglePointInfo, Ccd, CcdPlotter, \
 from dephon.corrections import DephonCorrection
 from dephon.dephon_init import DephonInit, MinimumPointInfo
 from dephon.enum import CorrectionType
+from dephon.make_config_coord import MakeCcd
 from dephon.plot_eigenvalues import EigenvaluePlotter
 
 logger = get_logger(__name__)
@@ -143,38 +143,8 @@ def make_single_ccd(args: Namespace):
 
 
 def make_ccd(args: Namespace):
-
-    def _inner(dir_: Path):
-        image_info: SinglePointInfo = loadfn(dir_ / "image_structure_info.json")
-        if image_info.bare_energy is None:
-            calc_results = get_calc_results(dir_, False)
-            image_info.bare_energy = calc_results.energy
-        try:
-            band_edge_state: BandEdgeState = loadfn(dir_ / "band_edge_states.json")
-            image_info.is_shallow = band_edge_state.is_shallow
-            if band_edge_state.is_shallow:
-                logger.info(f"{dir_} has shallow carriers.")
-        except FileNotFoundError:
-            logger.warning("To judge if the states are shallow or not,"
-                           "we need band_edge_states.json.")
-        image_info.to_json_file(dir_ / "image_structure_info.json")
-        return image_info
-
-    ground_image_infos = parse_dirs(args.ground_dirs, _inner, verbose=True)
-    excited_image_infos = parse_dirs(args.excited_dirs, _inner, verbose=True)
-    ground_eg_image_infos = deepcopy(ground_image_infos)
-
-    _add_carrier_energies(args.dephon_init, ground_image_infos,
-                          excited_image_infos, ground_eg_image_infos)
-
-    excited_name = f"excited + {args.dephon_init.semiconductor_type}"
-    ground = SingleCcd("ground", ground_image_infos)
-    excited = SingleCcd(excited_name, excited_image_infos)
-    ground_eg = SingleCcd("ground + p + n", ground_eg_image_infos)
-
-    ccd = Ccd(defect_name="test",
-              correction_energy_type=CorrectionType.extended_FNV,
-              image_infos_list=[ground, excited, ground_eg])
+    ccd = MakeCcd(args.ground_ccd, args.excited_ccd, args.dephon_init).ccd
+    print(ccd)
     ccd.to_json_file()
 
 

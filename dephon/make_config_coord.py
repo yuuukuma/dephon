@@ -1,11 +1,12 @@
 # -*- coding: utf-8 -*-
 #  Copyright (c) 2022 Kumagai group.
+from copy import deepcopy
 
 from vise.util.logger import get_logger
 
 from dephon.config_coord import SingleCcd, Ccd
-from dephon.dephon_init import DephonInit, MinimumPointInfo
-from dephon.enum import Carrier
+from dephon.dephon_init import DephonInit
+from dephon.enum import Carrier, BandEdge
 
 logger = get_logger(__name__)
 
@@ -32,51 +33,68 @@ class MakeCcd:
         self.orig_ground_ccd = ground_ccd
         self.orig_excited_ccd = excited_ccd
 
-    @property
-    def ground_min_point(self) -> MinimumPointInfo:
-        return self.dephon_init.min_point_info_from_charge(
-            self.orig_ground_ccd.charge)
+        self.orig_ground_ccd.shift_energy(
+            ground_ccd.charge * self.band_edge_level)
+        self.orig_excited_ccd.shift_energy(
+            excited_ccd.charge * self.band_edge_level)
 
-    @property
-    def excited_min_point(self) -> MinimumPointInfo:
-        return self.dephon_init.min_point_info_from_charge(
-            self.orig_excited_ccd.charge)
+        self.ref_energy = ground_ccd.disp_point_info(0.0).corrected_energy
 
     @property
     def charge_diff(self) -> int:
-        return self.excited_min_point.charge - self.ground_min_point.charge
+        return self.orig_excited_ccd.charge - self.orig_ground_ccd.charge
 
     @property
     def carrier_coexisting_with_excited(self):
         """ This should be a majority carrier."""
-        return Carrier.from_carrier_charge(self.charge_diff == 1)
+        return Carrier.from_carrier_charge(- self.charge_diff)
+
+    @property
+    def band_edge(self) -> BandEdge:
+        if self.charge_diff == 1:
+            return BandEdge.cbm
+        else:
+            return BandEdge.vbm
+
+    @property
+    def band_edge_level(self) -> float:
+        return self.dephon_init.__getattribute__(str(self.band_edge))
 
     def carrier_energy(self, carrier: Carrier) -> float:
-        return self.dephon_init.band_gap if carrier == Carrier.electron else 0.0
-
-    def _add_carrier(self, ccd: SingleCcd, carrier: Carrier) -> None:
-        ccd.carriers.append(carrier)
-        ccd.shift_energy(self.carrier_energy(carrier))
-        ccd.name += f" + {carrier}"
+        if carrier == Carrier.electron:
+            band_edge = self.dephon_init.cbm
+        elif carrier == Carrier.hole:
+            band_edge = self.dephon_init.vbm
+        else:
+            raise ValueError
+        return - carrier.charge * band_edge
 
     @property
     def _ground_ccd(self) -> SingleCcd:
         """
         Returns: Ground state ccd with the lowest energy to be zero
         """
-        min_energy = self.ground_min_point.corrected_energy
-        result = self.orig_ground_ccd.energy_shifted_single_ccd(min_energy)
+        result = deepcopy(self.orig_ground_ccd)
+        result.set_base_energy(self.ref_energy)
         result.name = "ground"
         return result
+
+    def _add_carrier(self, ccd: SingleCcd, carrier: Carrier) -> None:
+        ccd.carriers.append(carrier)
+        ccd.name += f" + {carrier}"
 
     @property
     def _ground_pn_ccd(self) -> SingleCcd:
         """
         Returns: Ground state ccd with an excited electron at CBM from VBM
         """
-        result = self._ground_ccd
+        result = deepcopy(self.orig_ground_ccd)
+        result.set_base_energy(self.ref_energy)
+        result.name = "ground"
+
         self._add_carrier(result, Carrier.hole)
         self._add_carrier(result, Carrier.electron)
+        result.shift_energy(self.dephon_init.cbm - self.dephon_init.vbm)
         return result
 
     @property
@@ -86,9 +104,8 @@ class MakeCcd:
                  carrier. The Q values are reverted and zero is set to that of
                  ground state ccd.
         """
-        min_energy = self.excited_min_point.corrected_energy
         result = self.orig_excited_ccd.dQ_reverted_single_ccd()
-        result = result.energy_shifted_single_ccd(min_energy)
+        result.set_base_energy(self.ref_energy)
         result.name = "excited"
         self._add_carrier(result, self.carrier_coexisting_with_excited)
         return result

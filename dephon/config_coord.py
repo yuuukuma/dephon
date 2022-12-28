@@ -33,7 +33,7 @@ class SinglePointInfo(MSONable, ToJsonFileMixIn):
     is_shallow: bool = None
     correction_method: CorrectionType = None
     used_for_fitting: bool = None
-    base_energy: float = 0.0
+    base_energy: float = 0.0 # This must be same in the same (Single)Ccd class
 
     @property
     def relative_energy(self):
@@ -45,10 +45,11 @@ class SinglePointInfo(MSONable, ToJsonFileMixIn):
     def list_data(self):
         result = [self.dQ, self.disp_ratio, self.corrected_energy,
                   self.relative_energy, self.used_for_fitting, self.is_shallow]
-        return ["-" if x is None else x for x in result]
+        return result
+#        return ["-" if x is None else x for x in result]
 
     def __str__(self):
-        return tabulate([self.list_data], tablefmt="plain", floatfmt=".2f",
+        return tabulate([self.list_data], tablefmt="plain", floatfmt=".3f",
                         headers=_imag_headers)
 
 
@@ -62,16 +63,17 @@ class SingleCcd(MSONable, ToJsonFileMixIn):
     def __post_init__(self):
         self.point_infos.sort(key=lambda x: x.dQ)
 
-    def set_base_energy(self, base_energy=None):
-        if base_energy is None:
-            base_energy = self.disp_point_info(0.0).corrected_energy
+    def set_base_energy(self, energy=None):
+        if energy is None:
+            energy = self.disp_point_info(0.0).corrected_energy
 
         for i in self.point_infos:
-            i.base_energy = base_energy
+            i.base_energy = energy
 
-    def shift_energy(self, shift_energy):
+    def shift_energy(self, energy):
         for i in self.point_infos:
-            i.corrected_energy += shift_energy
+            if i.corrected_energy:
+                i.corrected_energy += energy
 
     def disp_point_info(self, disp) -> SinglePointInfo:
         for point_info in self.point_infos:
@@ -94,13 +96,6 @@ class SingleCcd(MSONable, ToJsonFileMixIn):
             raise ValueError("The number of Q points is not sufficient.")
 
         return get_omega_from_PES(np.array(dQs), np.array(energies), ax=ax)
-
-    def energy_shifted_single_ccd(self, dQ_0_energy) -> "SingleCcd":
-        base_energy = self.disp_point_info(0.0).corrected_energy - dQ_0_energy
-        result = deepcopy(self)
-        for i in result.point_infos:
-            i.base_energy = base_energy
-        return result
 
     def dQ_reverted_single_ccd(self) -> "SingleCcd":
         result = deepcopy(self)
@@ -127,17 +122,18 @@ class SingleCcd(MSONable, ToJsonFileMixIn):
 
     def __str__(self):
         try:
-            omega = f"{self.omega():.2f}"
+            omega = f"{self.omega():.3f}"
         except ValueError:
             omega = "N.A."
-        result = [f"name: {self.name}", f"omega: {omega}"]
+        result = [f"name: {self.name}", f"charge: {self.charge}",
+                  f"omega: {omega}"]
 
         if self.carriers:
             carriers = " ".join([str(carrier) for carrier in self.carriers])
             result.append(f"carriers: {carriers}")
 
         table_data = [x.list_data for x in self.point_infos]
-        result.append(tabulate(table_data, tablefmt="plain", floatfmt=".2f",
+        result.append(tabulate(table_data, tablefmt="plain", floatfmt=".3f",
                                headers=_imag_headers + ["omega"]))
         return "\n".join(result)
 

@@ -6,7 +6,6 @@ from argparse import Namespace
 from pathlib import Path
 
 from monty.serialization import loadfn
-from pydefect.analyzer.calc_results import CalcResults
 from pydefect.analyzer.unitcell import Unitcell
 from pymatgen.core import Structure
 from vise.input_set.incar import ViseIncar
@@ -14,7 +13,7 @@ from vise.input_set.prior_info import PriorInfo
 
 from dephon.cli.main_function import make_dephon_init, make_ccd, plot_ccd, \
     make_ccd_dirs, make_wswq_dirs, make_single_point_infos, make_single_ccd
-from dephon.config_coord import Ccd, SinglePointInfo, SingleCcd
+from dephon.config_coord import SinglePointInfo, SingleCcd
 from dephon.corrections import DephonCorrection
 from dephon.dephon_init import DephonInit, MinimumPointInfo
 from dephon.enum import CorrectionType
@@ -150,56 +149,14 @@ def test_make_single_ccd(test_files, tmpdir):
     assert actual == expected
 
 
-def test_make_ccd(tmpdir, mocker, ground_structure):
-    print(tmpdir)
-    tmpdir.chdir()
-
-    for i in ["ground", "excited"]:
-        for disp in [-0.2, 0.2]:
-            disp_dir = Path(f"{i}/disp_{disp}")
-            disp_dir.mkdir(parents=True)
-            image_structure_info = SinglePointInfo(dQ=10.0 + disp,
-                                                      disp_ratio=disp,
-                                                      correction_energy=0.1)
-            image_structure_info.to_json_file(
-                disp_dir / "image_structure_info.json")
-            calc_results = CalcResults(ground_structure, energy=disp,
-                                       magnetization=0.0, potentials=[0.0])
-            calc_results.to_json_file(str(disp_dir / "calc_results.json"))
-
-    dephon_init = mocker.MagicMock()
-    dephon_init.defect_name = "test"
-    dephon_init.vbm = 1.0
-    dephon_init.cbm = 2.0
-    dephon_init.band_gap = 1.0
-    dephon_init.delta_EF = 0.0
-    dephon_init.single_ccd.charge = 1
-    dephon_init.excited_state.charge = 0
-    dephon_init.semiconductor_type = "p"
-
-    args = Namespace(dephon_init=dephon_init,
-                     ground_dirs=[Path("ground/disp_-0.2"),
-                                  Path("ground/disp_0.2")],
-                     excited_dirs=[Path("excited/disp_-0.2"),
-                                   Path("excited/disp_0.2")],
-                     skip_shallow=False)
+def test_make_ccd(test_files, tmpdir):
+    va_p1 = Path(test_files) / "NaP/Va_P1_-1_0"
+    ground_ccd = loadfn(va_p1 / "from_-1_to_0_after_make_single_point_infos/single_ccd.json")
+    excited_ccd = loadfn(va_p1 / "from_0_to_-1_after_make_single_point_infos/single_ccd.json")
+    dephon_init = loadfn(va_p1 / "dephon_init.json")
+    args = Namespace(ground_ccd=ground_ccd, excited_ccd=excited_ccd,
+                     dephon_init=dephon_init)
     make_ccd(args)
-    actual: Ccd = loadfn("ccd.json")
-
-    # p-type, minority carrier is an electron.
-    ground_info = SingleCcd(
-        "ground", [SinglePointInfo(9.8, -0.2, -0.2, False, 0.1),
-                   SinglePointInfo(10.2, 0.2, 0.2, False, 0.1)])
-    excited_info = SingleCcd(
-        "excited + p", [SinglePointInfo(9.8, -0.2, -0.2, False, 0.1),
-                        SinglePointInfo(10.2, 0.2, 0.2, False, 0.1)])
-    ground_info_eg = SingleCcd(
-        "ground + p + n", [SinglePointInfo(9.8, -0.2, -0.2 + 1.0, False, 0.1),
-                           SinglePointInfo(10.2, 0.2, 0.2 + 1.0, False, 0.1)])
-    expected = Ccd(defect_name="test",
-                   correction_energy_type=CorrectionType.extended_FNV,
-                   image_infos_list=[ground_info, excited_info, ground_info_eg])
-    assert actual == expected
 
 
 def test_plot_ccd(ccd, tmpdir):
