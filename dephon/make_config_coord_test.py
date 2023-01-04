@@ -31,7 +31,7 @@ def dephon_init(ground_structure, excited_structure):
                       **band_edges)
 
 
-common = dict(is_shallow=False, used_for_fitting=False)
+common = dict(is_shallow=False, used_for_fitting=True)
 
 
 def test(excited_structure, ground_structure, dephon_init):

@@ -20,8 +20,7 @@ def test_get_dR():
 def minimum_point_info(ground_structure):
     return MinimumPointInfo(charge=-1,
                             structure=ground_structure,
-                            bare_energy=-100.0,
-                            energy=10.0,
+                            energy=-90.0,
                             correction_energy=1.0,
                             initial_site_symmetry="4mm",
                             final_site_symmetry="2/m",
