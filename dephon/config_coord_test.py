@@ -65,6 +65,18 @@ def test_single_ccd_sort_single_point_infos(single_ccd):
     assert actual == expected
 
 
+def test_single_ccd_set_quadratic_fitting_range(single_ccd):
+    single_ccd.set_quadratic_fitting_range(q_range=[-0.1, 0.1])
+    actual = [p_info.used_for_fitting for p_info in single_ccd.point_infos]
+    expected = [True, False, False, False]
+    assert actual == expected
+
+    single_ccd.set_quadratic_fitting_range()
+    actual = [p_info.used_for_fitting for p_info in single_ccd.point_infos]
+    expected = [True, True, True, True]
+    assert actual == expected
+
+
 def test_single_ccd_dQs_and_energies(single_ccd):
     single_ccd.set_base_energy(0.1)
 
@@ -176,5 +188,11 @@ def test_spline3():
 
 def test_plot_ccd(ccd):
     plotter = CcdPlotter(ccd)
+    plotter.construct_plot()
+    plotter.plt.show()
+
+
+def test_plot_ccd_q_range(ccd):
+    plotter = CcdPlotter(ccd, q_range=[-2, 4])
     plotter.construct_plot()
     plotter.plt.show()

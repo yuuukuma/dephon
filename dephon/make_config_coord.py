@@ -28,7 +28,10 @@ class MakeCcd:
                  ground_ccd: SingleCcd,
                  excited_ccd: SingleCcd,
                  dephon_init: DephonInit):
-        assert abs(ground_ccd.charge - excited_ccd.charge) == 1
+        if abs(ground_ccd.charge - excited_ccd.charge) != 1:
+            raise AssertionError(
+                f"The charge difference needs to be 1. Now, ground state "
+                f"{ground_ccd.charge} and excited state {excited_ccd.charge}.")
         self.dephon_init = dephon_init
         self.orig_ground_ccd = ground_ccd
         self.orig_excited_ccd = excited_ccd
@@ -79,7 +82,8 @@ class MakeCcd:
         result.name = "ground"
         return result
 
-    def _add_carrier(self, ccd: SingleCcd, carrier: Carrier) -> None:
+    @staticmethod
+    def _add_carrier(ccd: SingleCcd, carrier: Carrier) -> None:
         ccd.carriers.append(carrier)
         ccd.name += f" + {carrier}"
 
@@ -112,6 +116,8 @@ class MakeCcd:
 
     @property
     def ccd(self) -> Ccd:
-        return Ccd(
-            defect_name=self.dephon_init.defect_name,
-            ccds=[self._ground_ccd, self._excited_ccd, self._ground_pn_ccd])
+        ccds = [self._ground_ccd, self._excited_ccd, self._ground_pn_ccd]
+        for ccd in ccds:
+            ccd.set_quadratic_fitting_range()
+
+        return Ccd(defect_name=self.dephon_init.defect_name, ccds=ccds)

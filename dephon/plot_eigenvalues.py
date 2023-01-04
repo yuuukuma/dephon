@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #  Copyright (c) 2022 Kumagai group.
-from typing import List, Dict
+from typing import List
 
 from matplotlib import pyplot as plt
 from pydefect.analyzer.band_edge_states import BandEdgeOrbitalInfos
@@ -10,10 +10,10 @@ from vise.util.matplotlib import float_to_int_formatter
 logger = get_logger(__name__)
 
 
-class EigenvaluePlotter:
+class DephonEigenvaluePlotter:
     def __init__(self,
                  orb_infos: List[BandEdgeOrbitalInfos],
-                 qs: List[float],
+                 disp_ratios: List[float],
                  supercell_vbm: float = None,
                  supercell_cbm: float = None,
                  title: str = None):
@@ -34,7 +34,7 @@ class EigenvaluePlotter:
 
         self._title = title or ""
         self._orb_infos = orb_infos
-        self._qs = qs
+        self._disp_ratios = disp_ratios
         self._supercell_vbm, self._supercell_cbm = supercell_vbm, supercell_cbm
         self.plt = plt
         num_spin = len(self._orb_infos[0].orbital_infos)
@@ -55,9 +55,9 @@ class EigenvaluePlotter:
         num_spin = len(self._orb_infos[0].orbital_infos)
 
         for spin_idx in range(num_spin):
-            for orb_infos, q in zip(self._orb_infos, self._qs):
+            for orb_infos, disp_ratio in zip(self._orb_infos, self._disp_ratios):
                 orb_info = orb_infos.orbital_infos[spin_idx][0]
-                xs = [q] * len(orb_info)
+                xs = [disp_ratio] * len(orb_info)
                 energies = [oi.energy for oi in orb_info]
                 occupations = [oi.occupation for oi in orb_info]
                 self.axs[spin_idx].scatter(xs, energies, c=occupations,
@@ -71,7 +71,7 @@ class EigenvaluePlotter:
             ax.axhline(y=self._supercell_cbm, **args)
 
     def _set_labels(self):
-        self.fig.text(0.55, 0, "Q (amu$^{1/2}$ Å)", ha='center')
+        self.fig.text(0.55, 0, "Displacement ratio", ha='center')
         self.axs[0].set_ylabel(f"Energy (eV)")
 
     def _set_title(self):

@@ -2,7 +2,6 @@
 #  Copyright (c) 2022 Kumagai group.
 import os
 from argparse import Namespace
-from glob import glob
 from pathlib import Path
 
 import yaml
@@ -17,13 +16,13 @@ from vise.input_set.incar import ViseIncar
 from vise.util.file_transfer import FileLink
 from vise.util.logger import get_logger
 
-from dephon.config_coord import SinglePointInfo, Ccd, CcdPlotter, \
+from dephon.config_coord import SinglePointInfo, CcdPlotter, \
     SingleCcd
 from dephon.corrections import DephonCorrection
 from dephon.dephon_init import DephonInit, MinimumPointInfo
 from dephon.enum import CorrectionType
 from dephon.make_config_coord import MakeCcd
-from dephon.plot_eigenvalues import EigenvaluePlotter
+from dephon.plot_eigenvalues import DephonEigenvaluePlotter
 
 logger = get_logger(__name__)
 
@@ -148,23 +147,11 @@ def make_ccd(args: Namespace):
     ccd.to_json_file()
 
 
-def _add_carrier_energies(dephon_init, ground_image_infos, excited_image_infos,
-                          ground_eg_image_infos):
-    fermi_level_from_vbm = dephon_init.delta_EF
-    for v in ground_image_infos:
-        v.bare_energy += dephon_init.single_ccd.charge * fermi_level_from_vbm
-    for v in excited_image_infos:
-        v.bare_energy += dephon_init.excited_state.charge * fermi_level_from_vbm
-    for v in ground_eg_image_infos:
-        v.bare_energy += dephon_init.band_gap
-
-
-def set_fitting_q_range(args: Namespace):
-    ccd: Ccd = args.ccd
-    imag = ccd.single_ccd(args.image_name)
-    imag.set_q_range(args.q_min, args.q_max)
-    ccd.to_json_file()
-    print(imag)
+def set_quadratic_fitting_q_range(args: Namespace):
+    single_ccd: SingleCcd = args.ccd.single_ccd(args.single_ccd_name)
+    single_ccd.set_quadratic_fitting_range(args.q_range)
+    print(args.ccd)
+    args.ccd.to_json_file()
 
 
 def plot_ccd(args: Namespace):
@@ -175,21 +162,26 @@ def plot_ccd(args: Namespace):
 
 
 def plot_eigenvalues(args: Namespace):
-    qs, orb_infos = [], []
+    disp_ratios, orb_infos = [], []
 
-    for d in glob(f'{args.dir}/disp_*'):
+    for d in args.dirs:
         try:
-            orb_infos.append(loadfn(Path(d) / "band_edge_orbital_infos.json"))
-            imag_info: SinglePointInfo = loadfn(Path(d) / "image_structure_info.json")
-            qs.append(imag_info.dQ)
+            orb_info = loadfn(Path(d) / "band_edge_orbital_infos.json")
         except FileNotFoundError:
             logger.info(f"band_edge_orbital_infos.json does not exist in {d}")
-            pass
+            continue
+        try:
+            single_point_info = loadfn(Path(d) / "single_point_info.json")
+        except FileNotFoundError:
+            logger.info(f"single_point_info.json does not exist in {d}")
+            continue
+        orb_infos.append(orb_info)
+        disp_ratios.append(single_point_info.disp_ratio)
 
-    vbm, cbm = args.dephon_init.vbm, args.dephon_init.cbm
-    eigval_plotter = EigenvaluePlotter(orb_infos, qs, vbm, cbm)
+    vbm, cbm = args.dephon_init.supercell_vbm, args.dephon_init.supercell_cbm
+    eigval_plotter = DephonEigenvaluePlotter(orb_infos, disp_ratios, vbm, cbm)
     eigval_plotter.construct_plot()
-    eigval_plotter.plt.savefig(args.fig_name)
+    eigval_plotter.plt.savefig("dephon_eigenvalues.pdf")
     eigval_plotter.plt.show()
 
 

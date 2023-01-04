@@ -12,8 +12,9 @@ from vise.input_set.incar import ViseIncar
 from vise.input_set.prior_info import PriorInfo
 
 from dephon.cli.main_function import make_dephon_init, make_ccd, plot_ccd, \
-    make_ccd_dirs, make_wswq_dirs, make_single_point_infos, make_single_ccd
-from dephon.config_coord import SinglePointInfo, SingleCcd
+    make_ccd_dirs, make_wswq_dirs, make_single_point_infos, make_single_ccd, \
+    plot_eigenvalues, set_quadratic_fitting_q_range
+from dephon.config_coord import SinglePointInfo, SingleCcd, Ccd
 from dephon.corrections import DephonCorrection
 from dephon.dephon_init import DephonInit, MinimumPointInfo
 from dephon.enum import CorrectionType
@@ -150,6 +151,7 @@ def test_make_single_ccd(test_files, tmpdir):
 
 
 def test_make_ccd(test_files, tmpdir):
+    tmpdir.chdir()
     va_p1 = Path(test_files) / "NaP/Va_P1_-1_0"
     ground_ccd = loadfn(va_p1 / "from_-1_to_0_after_make_single_point_infos/single_ccd.json")
     excited_ccd = loadfn(va_p1 / "from_0_to_-1_after_make_single_point_infos/single_ccd.json")
@@ -159,9 +161,27 @@ def test_make_ccd(test_files, tmpdir):
     make_ccd(args)
 
 
+def test_set_quadratic_fitting_q_range(ccd, tmpdir):
+    tmpdir.chdir()
+    args = Namespace(ccd=ccd, single_ccd_name="ground", q_range=[-1.0, 1.0])
+    set_quadratic_fitting_q_range(args)
+    ccd: Ccd = loadfn("ccd.json")
+    assert ccd.ccds[1].point_infos[1].used_for_fitting is True
+
+
 def test_plot_ccd(ccd, tmpdir):
     args = Namespace(ccd=ccd, fig_name=tmpdir / "ccd.pdf")
     plot_ccd(args)
+
+
+def test_plot_eigenvalues(test_files, tmpdir):
+    tmpdir.chdir()
+    va_p1 = Path(test_files) / "NaP/Va_P1_-1_0"
+    dephon_init = loadfn(va_p1 / "dephon_init.json")
+    dir_ = va_p1 / "from_0_to_-1_after_make_single_point_infos"
+    args = Namespace(dirs=[dir_ / "disp_0.0", dir_ / "disp_1.0"],
+                     dephon_init=dephon_init)
+    plot_eigenvalues(args)
 
 
 def test_make_wswq_dirs(tmpdir, mocker):

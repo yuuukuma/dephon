@@ -10,7 +10,7 @@ from pydefect.cli.main import add_sub_parser
 from pymatgen.io.vasp.inputs import UnknownPotcarWarning
 
 from dephon.cli.main_function import make_dephon_init, make_ccd, \
-    make_ccd_dirs, plot_ccd, plot_eigenvalues, set_fitting_q_range, \
+    make_ccd_dirs, plot_ccd, plot_eigenvalues, set_quadratic_fitting_q_range, \
     make_wswq_dirs, make_single_point_infos, make_single_ccd
 from dephon.version import __version__
 
@@ -30,6 +30,7 @@ def parse_args_main(args):
 
     unitcell_parser = add_sub_parser(argparse, name="unitcell")
     pbes_parser = add_sub_parser(argparse, name="perfect_band_edge_state")
+    dirs = add_sub_parser(argparse, name="dirs")
 
     dephon_init = argparse.ArgumentParser(description="", add_help=False)
     dephon_init.add_argument(
@@ -84,11 +85,9 @@ def parse_args_main(args):
                     "band_edge_states.json files need to be created using "
                     "pydefect.",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+        parents=[dirs],
         aliases=['mspi'])
 
-    parser_make_single_point_infos.add_argument(
-        "-d", "--dirs", type=Path, nargs="+",
-        help="Directories to create single_point_info.json file.")
     parser_make_single_point_infos.set_defaults(func=make_single_point_infos)
 
     # -- make_single_ccd -----------------------------------
@@ -99,33 +98,25 @@ def parse_args_main(args):
                     "band_edge_states.json files need to be created using "
                     "pydefect.",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+        parents=[dirs],
         aliases=['msc'])
 
-    parser_make_single_ccd.add_argument(
-        "-d", "--dirs", type=Path, nargs="+",
-        help="Directories to create single_ccd.json file.")
     parser_make_single_ccd.set_defaults(func=make_single_ccd)
 
     # -- make_ccd -----------------------------------
     parser_make_ccd = subparsers.add_parser(
         name="make_ccd",
-        description="Make ccd.json file from calculated directories."
-                    "Before running this command, one needs to create "
-                    "calc_results.json and band_edge_states.json files"
-                    "at each directory.",
+        description="Make ccd.json file",
         parents=[dephon_init],
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
         aliases=['mc'])
 
     parser_make_ccd.add_argument(
-        "-g", "--ground_dirs", type=Path, nargs="+",
-        help="Directories for ground directories.")
+        "-g", "--ground_ccd", type=loadfn,
+        help="single_ccd.json file corresponding to a ground state.")
     parser_make_ccd.add_argument(
-        "-e", "--excited_dirs", type=Path, nargs="+",
-        help="Directories for excited directories.")
-    parser_make_ccd.add_argument(
-        "-s", "--skip_shallow", action="store_true",
-        help="Set when skip shallow states.")
+        "-e", "--excited_ccd", type=loadfn,
+        help="single_ccd.json file corresponding to an excited state.")
     parser_make_ccd.set_defaults(func=make_ccd)
 
     # -- set_fitting_q_range -----------------------------------
@@ -133,17 +124,15 @@ def parse_args_main(args):
         name="set_fitting_q_range",
         description="Set the fitting range for the quadratic potential surface",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
-        aliases=['sfq'])
+        aliases=['sfr'])
 
     parser_set_fitting_q_range.add_argument(
         "--ccd", type=loadfn, default="ccd.json")
     parser_set_fitting_q_range.add_argument(
-        "--image_name", type=str, required=True)
+        "--single_ccd_name", type=str, required=True)
     parser_set_fitting_q_range.add_argument(
-        "--q_min", type=float)
-    parser_set_fitting_q_range.add_argument(
-        "--q_max", type=float)
-    parser_set_fitting_q_range.set_defaults(func=set_fitting_q_range)
+        "--q_range", type=float, nargs="+")
+    parser_set_fitting_q_range.set_defaults(func=set_quadratic_fitting_q_range)
 
     # -- plot_ccd -----------------------------------
     parser_plot_ccd = subparsers.add_parser(
@@ -162,21 +151,12 @@ def parse_args_main(args):
     # -- plot_eigenvalues -----------------------------------
     parser_plot_eigenvalues = subparsers.add_parser(
         name="plot_eigenvalues",
-        parents=[dephon_init],
-        description="Plot eigenvalues as function of Q for each state.",
+        parents=[dephon_init, dirs],
+        description="Plot eigenvalues as function of displacement ratio. "
+                    "band_edge_orbital_infos.json is needed at each directory.",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
         aliases=['pe'])
 
-    parser_plot_eigenvalues.add_argument(
-        "--ccd", type=loadfn, default="ccd.json")
-    parser_plot_eigenvalues.add_argument(
-        "--dir", type=Path,
-        help="Set ground or excited directory path. E.g. XXX/YY/ground")
-    parser_plot_eigenvalues.add_argument(
-        "--fig_name", type=str, default="eigenvalues.pdf")
-    parser_plot_eigenvalues.add_argument(
-        "-pbes", "--perfect_band_edge_state", type=loadfn,
-        help="Path to the perfect_band_edge_state.json.")
     parser_plot_eigenvalues.set_defaults(func=plot_eigenvalues)
 
     # -- make_wswq_dirs -----------------------------------
