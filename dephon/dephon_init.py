@@ -34,9 +34,21 @@ def get_dR(ground: Structure, excited: Structure) -> float:
 
 @dataclass
 class MinimumPointInfo(MSONable):
+    """ Information at lowest energy point at given charge
+
+    Attributes:
+        charge (int): The charge state.
+        structure (Structure): The atomic configuration.
+        energy (float): Formation energy at Ef=VBM and chemical potentials
+            being standard states.
+        correction_energy (float): Correction energy estimated e.g. eFNV.
+        initial_site_symmetry (str): Site symmetry before relaxing a defect.
+        final_site_symmetry (str): Site symmetry after relaxing a defect.
+        parse_dir (str): Directory where the calculation results of this
+            minimum point are stored. This should be an absolute path.
+    """
     charge: int
     structure: Structure
-    # formation energy at Ef=VBM and chemical potentials being standard states.
     energy: float
     correction_energy: float
     initial_site_symmetry: str
@@ -61,6 +73,17 @@ class MinimumPointInfo(MSONable):
 
 @dataclass
 class DephonInit(MSONable, ToJsonFileMixIn):
+    """ Information related to configuration coordination diagram.
+
+    Attributes:
+        defect_name (str): Name of a defect, e.g., Va_O1
+        states (List[MinimumPointInfo]): List of two minimum points. Usually,
+            the charge state difference should be 1.
+        vbm (float): valence band maximum in the unitcell calculation.
+        cbm (float): conduction band minimum in the unitcell calculation.
+        superell_vbm (float): vbm in the perfect supercell calculation.
+        superell_cbm (float): cbm in the perfect supercell calculation.
+    """
     defect_name: str
     states: List[MinimumPointInfo]
     vbm: float
@@ -80,19 +103,6 @@ class DephonInit(MSONable, ToJsonFileMixIn):
             if state.charge == charge:
                 return state
         raise ValueError(f"Charge {charge} does not exist.")
-
-    # @property
-    # def delta_EF(self):
-    #     return self.band_gap if self.semiconductor_type == "n" else 0.0
-
-    # @property
-    # def semiconductor_type(self) -> str:
-    #     trap_charge_by_excited_state = \
-    #         - (self.excited_state.charge - self.single_ccd.charge)
-    #     if trap_charge_by_excited_state == 1:
-    #         return "p"
-    #     else:
-    #         return "n"
 
     @property
     def volume(self):
