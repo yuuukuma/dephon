@@ -126,6 +126,7 @@ def test_main_plot_ccd_wo_args(mocker):
     expected = Namespace(
         ccd=mock_ccd,
         fig_name="ccd.pdf",
+        q_range=None,
         func=parsed_args.func)
     assert parsed_args == expected
 

@@ -179,11 +179,11 @@ omega: N.A.
 def test_spline3():
     x = [0.0, 1.0, 2.0, 3.0]
     y = [0.0, 1.0, 8.0, 28.0]
-    assert (spline3(x, y, num_points=11))[1][1] == pytest.approx(2.17924820)
-    # actual = spline3(x, y, num_points=11, x_min=-1.0, x_max=4.0)
-    # print(actual)
+    actual = spline3(x, y, num_points=11)
+    assert actual[1][1] == pytest.approx(2.17924820)
+
+    actual = spline3(x, y, num_points=11, xrange=[-1.0, 4.0])
     # assert actual[0][0] == pytest.approx(-1.0)
-    # assert actual[0][-1] == pytest.approx(4.0)
 
 
 def test_plot_ccd(ccd):

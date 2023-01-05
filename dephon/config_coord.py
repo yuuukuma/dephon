@@ -10,9 +10,7 @@ from matplotlib import pyplot as plt
 from matplotlib.axes import Axes
 from monty.json import MSONable
 from nonrad.ccd import get_omega_from_PES
-from nonrad.nonrad import AMU2KG, ANGS2M, EV2J, HBAR
 from scipy import interpolate
-from scipy.optimize import curve_fit
 from tabulate import tabulate
 from vise.util.logger import get_logger
 from vise.util.matplotlib import float_to_int_formatter
@@ -25,51 +23,6 @@ logger = get_logger(__name__)
 
 _imag_headers = ["dQ", "disp ratio", "corr. energy", "relative energy",
                  "used for fitting?", "is shallow?"]
-
-
-def get_omega_from_PES(
-        Q: np.ndarray,
-        energy: np.ndarray,
-        Q0: Optional[float] = None,
-        ax=None,
-        q: Optional[np.ndarray] = None
-) -> float:
-    """Calculate the harmonic phonon frequency for the given PES.
-
-    Parameters
-    ----------
-    Q : np.array(float)
-        array of Q values (amu^{1/2} Angstrom) corresponding to each vasprun
-    energy : np.array(float)
-        array of energies (eV) corresponding to each vasprun
-    Q0 : float
-        fix the minimum of the parabola (default is None)
-    ax : matplotlib.axes.Axes
-        optional axis object to plot the resulting fit (default is None)
-    q : np.array(float)
-        array of Q values to evaluate the fitting function at
-
-    Returns
-    -------
-    float
-        harmonic phonon frequency from the PES in eV
-    """
-    def f(Q, omega, Q0, dE):
-        return 0.5 * omega**2 * (Q - Q0)**2 + dE
-
-    # set bounds to restrict Q0 to the given Q0 value
-    bounds = (-np.inf, np.inf) if Q0 is None else \
-        ([-np.inf, Q0 - 1e-10, -np.inf], [np.inf, Q0, np.inf])
-    popt, _ = curve_fit(f, Q, energy, bounds=bounds)    # pylint: disable=W0632
-
-    # optional plotting to check fit
-    if ax is not None:
-        q_L = np.max(Q) - np.min(Q)
-        if q is None:
-            q = np.linspace(np.min(Q) - 0.1 * q_L, np.max(Q) + 0.1 * q_L, 1000)
-        ax.plot(q, f(q, *popt))
-
-    return HBAR * popt[0] * np.sqrt(EV2J / (ANGS2M**2 * AMU2KG))
 
 
 @dataclass
@@ -147,13 +100,16 @@ class SingleCcd(MSONable, ToJsonFileMixIn):
             energies.append(imag.relative_energy)
         return dQs, energies
 
-    def omega(self, ax: Axes = None):
+    def omega(self, ax: Axes = None,
+              plot_q_range: Optional[List[float]] = None):
         dQs, energies = self.dQs_and_energies(True)
         if len(dQs) < 3:
             raise ValueError("The number of Q points is not sufficient for "
                              "calculating omega.")
+        q = np.linspace(plot_q_range[0], plot_q_range[1], 1000) \
+            if plot_q_range else None
 
-        return get_omega_from_PES(np.array(dQs), np.array(energies), ax=ax)
+        return get_omega_from_PES(np.array(dQs), np.array(energies), ax=ax, q=q)
 
     def dQ_reverted_single_ccd(self) -> "SingleCcd":
         result = deepcopy(self)
@@ -175,7 +131,7 @@ class SingleCcd(MSONable, ToJsonFileMixIn):
             pass
 
         try:
-            self.omega(ax)
+            self.omega(ax, plot_q_range=q_range)
         except (ValueError, TypeError) as e:
             print(f"{self.name}: {e}")
             pass
@@ -243,7 +199,6 @@ def spline3(xs, ys, num_points, xrange=None):
     else:
         _min, _max = 0.0, 1.0
 
-    print(xs, xrange, _min, _max)
     u = np.linspace(_min, _max, num=num_points, endpoint=True)
     spline = interpolate.splev(u, tck)
     return spline[0], spline[1]

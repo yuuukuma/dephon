@@ -155,7 +155,7 @@ def set_quadratic_fitting_q_range(args: Namespace):
 
 
 def plot_ccd(args: Namespace):
-    plotter = CcdPlotter(args.ccd)
+    plotter = CcdPlotter(args.ccd, q_range=args.q_range)
     plotter.construct_plot()
     plotter.plt.savefig(args.fig_name)
     plotter.plt.show()

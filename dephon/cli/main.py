@@ -145,6 +145,8 @@ def parse_args_main(args):
         "--ccd", type=loadfn, default="ccd.json")
     parser_plot_ccd.add_argument(
         "--fig_name", type=str, default="ccd.pdf")
+    parser_plot_ccd.add_argument(
+        "--q_range", type=float, nargs="+")
 
     parser_plot_ccd.set_defaults(func=plot_ccd)
 

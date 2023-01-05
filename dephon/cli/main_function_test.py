@@ -170,7 +170,8 @@ def test_set_quadratic_fitting_q_range(ccd, tmpdir):
 
 
 def test_plot_ccd(ccd, tmpdir):
-    args = Namespace(ccd=ccd, fig_name=tmpdir / "ccd.pdf")
+    args = Namespace(ccd=ccd, fig_name=tmpdir / "ccd.pdf",
+                     q_range=[-1.0, 1.0])
     plot_ccd(args)
 
 
