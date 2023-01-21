@@ -253,7 +253,7 @@ def _make_wswq_dir(dir_, dephon_init: DephonInit):
         logger.info(f"Directory {wswq_dir} exists, so skip creating it.")
         return
 
-    charge = PriorInfo.load_yaml(dir_ / "prior_info.yaml")
+    charge = PriorInfo.load_yaml(dir_ / "prior_info.yaml").charge
     original_dir = dephon_init.min_info_from_charge(charge).dir_path
 
     wswq_dir.mkdir()
