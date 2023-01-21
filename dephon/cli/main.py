@@ -11,7 +11,7 @@ from pymatgen.io.vasp.inputs import UnknownPotcarWarning
 
 from dephon.cli.main_function import make_dephon_init, make_ccd, \
     make_ccd_dirs, plot_ccd, plot_eigenvalues, set_quadratic_fitting_q_range, \
-    make_wswq_dirs, make_single_point_infos, make_single_ccd, \
+    make_wswq_dirs, update_single_point_infos, make_single_ccd, \
     make_initial_e_p_coupling
 from dephon.enum import Carrier
 from dephon.version import __version__
@@ -86,18 +86,20 @@ def parse_args_main(args):
     parser_add_ccd_dirs.set_defaults(
         func=make_ccd_dirs)
 
-    # -- make_single_point_infos -----------------------------------
-    parser_make_single_point_infos = subparsers.add_parser(
-        name="make_single_point_infos",
-        description="Make single_point_info.json at each directory. "
-                    "Before running this command, calc_results.json and "
+    # -- update_single_point_infos -----------------------------------
+    parser_update_single_point_infos = subparsers.add_parser(
+        name="update_single_point_infos",
+        description="Update single_point_info.json at each directory. "
+                    "Before running this command, calc_results.json, "
+                    "band_edge_orbital_infos.json, and "
                     "band_edge_states.json files need to be created using "
                     "pydefect.",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
         parents=[dirs],
-        aliases=['mspi'])
+        aliases=['uspi'])
 
-    parser_make_single_point_infos.set_defaults(func=make_single_point_infos)
+    parser_update_single_point_infos.set_defaults(
+        func=update_single_point_infos)
 
     # -- make_single_ccd -----------------------------------
     parser_make_single_ccd = subparsers.add_parser(
@@ -195,7 +197,7 @@ def parse_args_main(args):
         aliases=['mwd'])
 
     parser_make_wswq_dirs.add_argument(
-        "--ccd_init", type=loadfn, default="ccd_init.json")
+        "--dephon_init", type=loadfn, default="dephon_init.json")
     parser_make_wswq_dirs.add_argument(
         "--ground_dirs", type=Path, nargs="+", default=[])
     parser_make_wswq_dirs.add_argument(

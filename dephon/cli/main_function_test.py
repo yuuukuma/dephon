@@ -13,7 +13,7 @@ from vise.input_set.incar import ViseIncar
 from vise.input_set.prior_info import PriorInfo
 
 from dephon.cli.main_function import make_dephon_init, make_ccd, plot_ccd, \
-    make_ccd_dirs, make_wswq_dirs, make_single_point_infos, make_single_ccd, \
+    make_ccd_dirs, make_wswq_dirs, update_single_point_infos, make_single_ccd, \
     plot_eigenvalues, set_quadratic_fitting_q_range, make_initial_e_p_coupling
 from dephon.config_coord import SinglePointInfo, SingleCcd, Ccd
 from dephon.corrections import DephonCorrection
@@ -146,13 +146,13 @@ def test_make_ccd_dirs(tmpdir, ground_structure, excited_structure,
 #
 
 
-def test_make_single_point_infos(test_files, tmpdir):
+def test_update_single_point_infos(test_files, tmpdir):
     tmpdir.chdir()
     src = Path(test_files / "NaP/Va_P1_-1_0/from_0_to_-1_before_make_single_point_infos/disp_0.0")
     print(src)
     shutil.copytree(src, Path.cwd() / "disp_0.0")
     args = Namespace(dirs=[Path("disp_0.0")])
-    make_single_point_infos(args)
+    update_single_point_infos(args)
 
     actual = loadfn("disp_0.0/single_point_info.json")
     l_orb = LocalizedOrbital(band_idx=765,

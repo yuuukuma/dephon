@@ -7,7 +7,7 @@ from pydefect.analyzer.band_edge_states import PerfectBandEdgeState
 from vise.analyzer.effective_mass import EffectiveMass
 
 from dephon.cli.main import parse_args_main
-from dephon.cli.main_function import make_single_point_infos, make_ccd, \
+from dephon.cli.main_function import update_single_point_infos, make_ccd, \
     plot_eigenvalues, make_single_ccd, make_initial_e_p_coupling
 from dephon.config_coord import Ccd, SingleCcd
 from dephon.dephon_init import DephonInit
@@ -78,7 +78,7 @@ def test_main_make_dirs(mocker):
 
 def test_main_make_single_point_infos():
     parsed_args = parse_args_main(["mspi", "-d", "disp_0.0"])
-    expected = Namespace(dirs=[Path("disp_0.0")], func=make_single_point_infos)
+    expected = Namespace(dirs=[Path("disp_0.0")], func=update_single_point_infos)
     assert parsed_args == expected
 
 

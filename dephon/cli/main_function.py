@@ -171,7 +171,7 @@ def _make_ccd_dir(charge, dirname, ratio, structure, dQ, correction):
         logger.info(f"Directory {dir_} exists, so skip it.")
 
 
-def make_single_point_infos(args: Namespace):
+def update_single_point_infos(args: Namespace):
     def _inner(dir_: Path):
         calc_results = get_calc_results(dir_, False)
         band_edge_states: BandEdgeStates = loadfn(dir_ / "band_edge_states.json")
