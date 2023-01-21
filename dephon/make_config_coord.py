@@ -4,7 +4,7 @@ from copy import deepcopy
 
 from vise.util.logger import get_logger
 
-from dephon.config_coord import SingleCcd, Ccd
+from dephon.config_coord import SingleCcd, Ccd, SingleCcdId
 from dephon.dephon_init import DephonInit
 from dephon.enum import Carrier, BandEdge
 
@@ -49,7 +49,7 @@ class MakeCcd:
 
     @property
     def carrier_coexisting_with_excited(self):
-        """ This should be a majority carrier."""
+        """ This should be _default_single_ccd_for_e_p_coupling majority carrier."""
         return Carrier.from_carrier_charge(- self.charge_diff)
 
     @property
@@ -64,9 +64,9 @@ class MakeCcd:
         return self.dephon_init.__getattribute__(str(self.band_edge))
 
     def carrier_energy(self, carrier: Carrier) -> float:
-        if carrier == Carrier.electron:
+        if carrier == Carrier.e:
             band_edge = self.dephon_init.cbm
-        elif carrier == Carrier.hole:
+        elif carrier == Carrier.h:
             band_edge = self.dephon_init.vbm
         else:
             raise ValueError
@@ -79,13 +79,8 @@ class MakeCcd:
         """
         result = deepcopy(self.orig_ground_ccd)
         result.set_base_energy(self.ref_energy)
-        result.name = "ground"
+        result.id_ = SingleCcdId("ground")
         return result
-
-    @staticmethod
-    def _add_carrier(ccd: SingleCcd, carrier: Carrier) -> None:
-        ccd.carriers.append(carrier)
-        ccd.name += f" + {carrier}"
 
     @property
     def _ground_pn_ccd(self) -> SingleCcd:
@@ -94,24 +89,22 @@ class MakeCcd:
         """
         result = deepcopy(self.orig_ground_ccd)
         result.set_base_energy(self.ref_energy)
-        result.name = "ground"
-
-        self._add_carrier(result, Carrier.hole)
-        self._add_carrier(result, Carrier.electron)
+        result.id_ = SingleCcdId("ground",
+                                 carriers=[Carrier.h, Carrier.e])
         result.shift_energy(self.dephon_init.cbm - self.dephon_init.vbm)
         return result
 
     @property
     def _excited_ccd(self) -> SingleCcd:
         """
-        Returns: Excited state ccd capturing a minority carrier with a majority
+        Returns: Excited state ccd capturing _default_single_ccd_for_e_p_coupling minority carrier with _default_single_ccd_for_e_p_coupling majority
                  carrier. The Q values are reverted and zero is set to that of
                  ground state ccd.
         """
         result = self.orig_excited_ccd.dQ_reverted_single_ccd()
         result.set_base_energy(self.ref_energy)
-        result.name = "excited"
-        self._add_carrier(result, self.carrier_coexisting_with_excited)
+        result.id_ = SingleCcdId(
+            "excited", carriers=[self.carrier_coexisting_with_excited])
         return result
 
     @property

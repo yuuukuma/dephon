@@ -2,6 +2,7 @@
 #  Copyright (c) 2022 Kumagai group.
 from copy import deepcopy
 from dataclasses import dataclass, field
+from itertools import permutations
 from math import isclose
 from typing import List, Optional
 
@@ -10,6 +11,7 @@ from matplotlib import pyplot as plt
 from matplotlib.axes import Axes
 from monty.json import MSONable
 from nonrad.ccd import get_omega_from_PES
+from pydefect.analyzer.band_edge_states import LocalizedOrbital
 from scipy import interpolate
 from tabulate import tabulate
 from vise.util.logger import get_logger
@@ -31,6 +33,8 @@ class SinglePointInfo(MSONable, ToJsonFileMixIn):
     disp_ratio: float
     # energy obtained directly from DFT calculations
     corrected_energy: float = None
+    magnetization: float = None
+    localized_orbitals: List[List[LocalizedOrbital]] = field(default_factory=list)
     is_shallow: bool = None
     correction_method: CorrectionType = None
     # whether this point is used for the quadratic fitting.
@@ -57,14 +61,35 @@ class SinglePointInfo(MSONable, ToJsonFileMixIn):
 
 
 @dataclass
-class SingleCcd(MSONable, ToJsonFileMixIn):
+class SingleCcdId(MSONable):
     name: str
+    carriers: List[Carrier] = field(default_factory=list)
+
+    def __str__(self):
+        return " + ".join([str(x) for x in [self.name] + self.carriers])
+
+    @classmethod
+    def from_str(cls, string) -> "SingleCcdId":
+        name, *carriers = string.split(" + ")
+        return cls(name, [Carrier.from_string(c) for c in carriers])
+
+
+@dataclass
+class SingleCcd(MSONable, ToJsonFileMixIn):
+    id_: SingleCcdId
     charge: int
     point_infos: List[SinglePointInfo] = field(default_factory=list)
-    carriers: List[Carrier] = field(default_factory=list)
 
     def __post_init__(self):
         self.point_infos.sort(key=lambda x: x.dQ)
+
+    @property
+    def name(self):
+        return self.id_.name
+
+    @property
+    def carriers(self):
+        return self.id_.carriers
 
     def set_base_energy(self, energy=None):
         if energy is None:
@@ -123,7 +148,6 @@ class SingleCcd(MSONable, ToJsonFileMixIn):
         dQs, energies = self.dQs_and_energies()
         ax.scatter(dQs, energies, marker='o', color=color)
         try:
-            print(dQs, energies)
             x, y = spline3(dQs, energies, 100, q_range)
             ax.plot(x, y, label=self.name, color=color)
         except TypeError as e:
@@ -154,18 +178,36 @@ class SingleCcd(MSONable, ToJsonFileMixIn):
         return "\n".join(result)
 
 
+def captured_carrier(initial: SingleCcd, final: SingleCcd):
+    carrier_diff = set(initial.carriers) - set(final.carriers)
+    if len(carrier_diff) != 1:
+        raise CarrierDiffError
+    return carrier_diff.pop()
+
+
 @dataclass
 class Ccd(MSONable, ToJsonFileMixIn):
     defect_name: str
     ccds: List[SingleCcd]
 
-    def single_ccd(self, ccd_name) -> SingleCcd:
+    def single_ccd(self, single_ccd_id) -> SingleCcd:
         names = []
         for i in self.ccds:
-            if i.name == ccd_name:
+            if i.id_.__str__() == single_ccd_id:
                 return i
-            names.append(i.name)
-        raise ValueError(f"Choose state name from {' '.join(names)}")
+            names.append(f"{i.id_.__str__()}")
+        raise ValueError(f"Choose state name from {'  '.join(names)}")
+
+    def initial_and_final_ccd_from_captured_carrier(
+            self, carrier: Carrier) -> (SingleCcd, SingleCcd):
+
+        for i, j in permutations(self.ccds, 2):
+            try:
+                if captured_carrier(i, j) == carrier:
+                    return i, j
+            except CarrierDiffError:
+                continue
+        raise CarrierDiffError
 
     def __str__(self):
         result = [f"name: {self.defect_name}"]
@@ -188,7 +230,7 @@ def spline3(xs, ys, num_points, xrange=None):
         Tuple of
     """
     #   tck : tuple
-    #         (t,c,k) a tuple containing the vector of knots, the B-spline
+    #         (t,c,k) _default_single_ccd_for_e_p_coupling tuple containing the vector of knots, the B-spline
     #         coefficients, and the degree of the spline.
     tck = interpolate.splprep([xs, ys])[0]
 
@@ -242,3 +284,6 @@ class CcdPlotter:
         self.plt.gca().xaxis.set_major_formatter(float_to_int_formatter)
         self.plt.gca().yaxis.set_major_formatter(float_to_int_formatter)
 
+
+class CarrierDiffError(Exception):
+    pass

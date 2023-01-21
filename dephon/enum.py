@@ -5,14 +5,17 @@ from vise.util.enum import ExtendedEnum
 
 
 class Carrier(MSONable, ExtendedEnum):
-    electron = "e"
-    hole = "h"
+    e, h = "e", "h"
+
+    @property
+    def pn(self):
+        return "n" if self is Carrier.e else "p"
 
     @property
     def charge(self):
-        if self == self.electron:
+        if self == self.e:
             return -1
-        elif self == self.hole:
+        elif self == self.h:
             return 1
         else:
             raise ValueError
@@ -20,10 +23,14 @@ class Carrier(MSONable, ExtendedEnum):
     @classmethod
     def from_carrier_charge(cls, carrier_charge):
         if carrier_charge == 1:
-            return cls.hole
+            return cls.h
         elif carrier_charge == -1:
-            return cls.electron
+            return cls.e
         raise ValueError
+
+    def is_occupied(self, occupation):
+        return occupation > 0.1 if self is Carrier.e \
+            else occupation < 0.9
 
 
 class CorrectionType(MSONable, ExtendedEnum):
@@ -32,6 +39,5 @@ class CorrectionType(MSONable, ExtendedEnum):
 
 
 class BandEdge(MSONable, ExtendedEnum):
-    vbm = "vbm"
-    cbm = "cbm"
+    vbm, cbm = "vbm", "cbm"
 

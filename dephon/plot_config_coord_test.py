@@ -13,7 +13,7 @@ def single_ccd():
     return SingleCcd(
         name="from_0_to_1",
         charge=0,
-        carriers=[Carrier.hole, Carrier.electron],
+        carriers=[Carrier.h, Carrier.e],
         point_infos=[
             SinglePointInfo(2., 1.0, 3.3, False, used_for_fitting=True),
             SinglePointInfo(1., 0.5, 2.2, False, used_for_fitting=True),

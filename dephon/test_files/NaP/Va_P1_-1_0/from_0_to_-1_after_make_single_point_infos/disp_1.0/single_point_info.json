@@ -1,1 +1,0 @@
-{"@module": "dephon.config_coord", "@class": "SinglePointInfo", "@version": null, "dQ": 4.212383016397637, "disp_ratio": 1.0, "corrected_energy": -2223.48480855, "is_shallow": true, "correction_method": {"@module": "dephon.enum", "@class": "CorrectionType", "@version": null, "value": "extended FNV"}, "used_for_fitting": null, "base_energy": 0.0}

@@ -2,7 +2,7 @@
 #  Copyright (c) 2022 Kumagai group.
 import pytest
 
-from dephon.config_coord import SinglePointInfo, SingleCcd, Ccd
+from dephon.config_coord import SinglePointInfo, SingleCcd, Ccd, SingleCcdId
 from dephon.dephon_init import MinimumPointInfo, DephonInit
 from dephon.enum import Carrier
 from dephon.make_config_coord import MakeCcd
@@ -16,18 +16,25 @@ def dephon_init(ground_structure, excited_structure):
                                structure=ground_structure,
                                energy=11.0,
                                correction_energy=-1.0,
+                               magnetization=0.0,
+                               localized_orbitals=[],
                                initial_site_symmetry="2mm",
                                final_site_symmetry="2",
-                               parsed_dir="/path/to/Va_O1_0")
+                               parsed_dir="/path/to/Va_O1_0",
+                               )
     va_o1_1 = MinimumPointInfo(charge=1,
                                structure=excited_structure,
                                energy=12.0,
                                correction_energy=-1.0,
+                               magnetization=1.0,
+                               localized_orbitals=[],
                                initial_site_symmetry="2mm",
                                final_site_symmetry="2",
                                parsed_dir="/path/to/Va_O1_1")
     # transition level = -1.0 from CBM
     return DephonInit(defect_name="Va_O", states=[va_o1_0, va_o1_1],
+                      ave_electron_mass=1.0, ave_hole_mass=1.0,
+                      ave_static_diele_const=1.0,
                       **band_edges)
 
 
@@ -35,7 +42,7 @@ common = dict(is_shallow=False, used_for_fitting=True)
 
 
 def test(excited_structure, ground_structure, dephon_init):
-    ground = SingleCcd(name="from_0_to_1",
+    ground = SingleCcd(SingleCcdId(name="from_0_to_1"),
                        charge=0,
                        point_infos=[SinglePointInfo(dQ=0.0,
                                                     disp_ratio=0.0,
@@ -45,7 +52,7 @@ def test(excited_structure, ground_structure, dephon_init):
                                                     disp_ratio=1.0,
                                                     corrected_energy=-90.0,
                                                     **common)])
-    excited = SingleCcd(name="from_1_to_0",
+    excited = SingleCcd(SingleCcdId(name="from_1_to_0"),
                         charge=1,
                         point_infos=[SinglePointInfo(dQ=0.0,
                                                      disp_ratio=0.0,
@@ -58,7 +65,7 @@ def test(excited_structure, ground_structure, dephon_init):
 
     actual = MakeCcd(ground, excited, dephon_init).ccd
     expected = Ccd(defect_name="Va_O", ccds=[
-        SingleCcd(name="ground",
+        SingleCcd(SingleCcdId(name="ground"),
                   charge=0,
                   point_infos=[SinglePointInfo(dQ=0.0,
                                                disp_ratio=0.0,
@@ -70,9 +77,8 @@ def test(excited_structure, ground_structure, dephon_init):
                                                corrected_energy=-90.0,
                                                base_energy=-100.0,
                                                **common)]),
-        SingleCcd(name="excited + e",
+        SingleCcd(SingleCcdId(name="excited", carriers=[Carrier.e]),
                   charge=1,
-                  carriers=[Carrier.electron],
                   point_infos=[SinglePointInfo(dQ=0.0,
                                                disp_ratio=1.0,
                                                # same as excited
@@ -85,9 +91,9 @@ def test(excited_structure, ground_structure, dephon_init):
                                                corrected_energy=-97.0,
                                                base_energy=-100.0,
                                                **common)]),
-        SingleCcd(name="ground + h + e",
+        SingleCcd(SingleCcdId(name="ground", carriers=[Carrier.h,
+                                                       Carrier.e]),
                   charge=0,
-                  carriers=[Carrier.hole, Carrier.electron],
                   point_infos=[SinglePointInfo(dQ=0.0,
                                                disp_ratio=0.0,
                                                # band gap is added to ground

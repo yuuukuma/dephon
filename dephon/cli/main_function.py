@@ -6,56 +6,109 @@ from pathlib import Path
 
 import yaml
 from monty.serialization import loadfn
-from pydefect.analyzer.band_edge_states import BandEdgeState
+from pydefect.analyzer.band_edge_states import BandEdgeStates, \
+    BandEdgeOrbitalInfos
 from pydefect.analyzer.calc_results import CalcResults
 from pydefect.analyzer.defect_energy import DefectEnergyInfo
 from pydefect.analyzer.defect_structure_info import DefectStructureInfo
 from pydefect.cli.main_functions import get_calc_results
 from pydefect.cli.main_tools import parse_dirs
+from pymatgen.electronic_structure.core import Spin
 from vise.input_set.incar import ViseIncar
 from vise.util.file_transfer import FileLink
 from vise.util.logger import get_logger
 
 from dephon.config_coord import SinglePointInfo, CcdPlotter, \
-    SingleCcd
+    SingleCcd, SingleCcdId
 from dephon.corrections import DephonCorrection
-from dephon.dephon_init import DephonInit, MinimumPointInfo
+from dephon.dephon_init import DephonInit, MinimumPointInfo, NearEdgeState
 from dephon.enum import CorrectionType
 from dephon.make_config_coord import MakeCcd
+from dephon.make_ele_phon_coupling import MakeInitialEPCoupling
 from dephon.plot_eigenvalues import DephonEigenvaluePlotter
+from dephon.util import spin_to_idx
 
 logger = get_logger(__name__)
 
 
-def _make_min_point_info_from_dir(_dir: Path):
+def make_near_edge_states(band_edge_orbital_infos: BandEdgeOrbitalInfos,
+                          spin: Spin,
+                          edge_energy: float,
+                          threshold: float = 0.1):
+    result = []
+    info_by_spin = band_edge_orbital_infos.orbital_infos[spin_to_idx(spin)]
+    for k_idx, (orb_info_by_kpt, k_coords, k_weight) in \
+        enumerate(zip(info_by_spin,
+                      band_edge_orbital_infos.kpt_coords,
+                      band_edge_orbital_infos.kpt_weights)):
+        k_idx_from_1 = k_idx + 1
+        for rel_idx, info_by_band in enumerate(orb_info_by_kpt):
+            e_from_band_edge = abs(info_by_band.energy - edge_energy)
+            if e_from_band_edge > threshold:
+                continue
+            band_idx = rel_idx + band_edge_orbital_infos.lowest_band_index
+            result.append(NearEdgeState(band_idx,
+                                        k_coords,
+                                        k_weight,
+                                        k_idx_from_1,
+                                        info_by_band.energy,
+                                        info_by_band.occupation))
+    return result
+
+
+def make_min_point_info_from_dir(_dir: Path):
     energy_info = DefectEnergyInfo.from_yaml(_dir / "defect_energy_info.yaml")
     calc_results: CalcResults = loadfn(_dir / "calc_results.json")
     defect_structure_info: DefectStructureInfo \
         = loadfn(_dir / "defect_structure_info.json")
+    band_edge_states: BandEdgeStates = loadfn(_dir / "band_edge_states.json")
+
+    band_edge_orbital_infos: BandEdgeOrbitalInfos = loadfn(_dir / "band_edge_orbital_infos.json")
+    localized_orbitals, valence_bands, conduction_bands = [], [], []
+    for state, spin in zip(band_edge_states.states, [Spin.up, Spin.down]):
+        localized_orbitals.append(state.localized_orbitals)
+        valence_bands.append(make_near_edge_states(band_edge_orbital_infos,
+                                                   spin,
+                                                   state.vbm_info.energy))
+        conduction_bands.append(make_near_edge_states(band_edge_orbital_infos,
+                                                      spin,
+                                                      state.cbm_info.energy))
     min_point_info = MinimumPointInfo(
         charge=energy_info.charge,
         structure=calc_results.structure,
         energy=energy_info.defect_energy.formation_energy,
         correction_energy=energy_info.defect_energy.total_correction,
+        magnetization=calc_results.magnetization,
+        localized_orbitals=localized_orbitals,
         initial_site_symmetry=defect_structure_info.initial_site_sym,
         final_site_symmetry=defect_structure_info.final_site_sym,
-        parsed_dir=str(_dir.absolute()))
+        parsed_dir=str(_dir.absolute()),
+        valence_bands=valence_bands,
+        conduction_bands=conduction_bands)
+
     return min_point_info, energy_info.name
 
 
 def make_dephon_init(args: Namespace):
-    state1, name1 = _make_min_point_info_from_dir(args.first_dir)
-    state2, name2 = _make_min_point_info_from_dir(args.second_dir)
+    state1, name1 = make_min_point_info_from_dir(args.first_dir)
+    state2, name2 = make_min_point_info_from_dir(args.second_dir)
 
     if name1 != name2:
         logger.warning("The names of ground and excited states are "
                        f"{name1} and {name2}. Here, {name1} is used.")
+
+    concentration = args.effective_mass.concentrations[0]
+    ave_hole_mass = args.effective_mass.average_mass("p", concentration)
+    ave_electron_mass = args.effective_mass.average_mass("n", concentration)
     dephon_init = DephonInit(defect_name=name1,
                              states=[state1, state2],
                              vbm=args.unitcell.vbm,
                              cbm=args.unitcell.cbm,
                              supercell_vbm=args.p_state.vbm_info.energy,
-                             supercell_cbm=args.p_state.cbm_info.energy)
+                             supercell_cbm=args.p_state.cbm_info.energy,
+                             ave_hole_mass=ave_hole_mass,
+                             ave_electron_mass=ave_electron_mass,
+                             ave_static_diele_const=args.unitcell.ave_ele_diele)
 
     path = Path(f"cc/{dephon_init.defect_name}_{state1.charge}_{state2.charge}")
     if path.exists() is False:
@@ -95,7 +148,8 @@ def make_ccd_dirs(args: Namespace):
 
         single_ccd = Path(name) / "single_ccd.json"
         if single_ccd.exists() is False:
-            SingleCcd(name=name, charge=initial_charge).to_json_file(single_ccd)
+            id_ = SingleCcdId(name)
+            SingleCcd(id_, charge=initial_charge).to_json_file(single_ccd)
 
 
 def _make_ccd_dir(charge, dirname, ratio, structure, dQ, correction):
@@ -120,12 +174,14 @@ def _make_ccd_dir(charge, dirname, ratio, structure, dQ, correction):
 def make_single_point_infos(args: Namespace):
     def _inner(dir_: Path):
         calc_results = get_calc_results(dir_, False)
-        band_edge_state: BandEdgeState = loadfn(dir_ / "band_edge_states.json")
+        band_edge_states: BandEdgeStates = loadfn(dir_ / "band_edge_states.json")
         correction = DephonCorrection.from_yaml(dir_ / "dephon_correction.yaml")
 
         sp_info: SinglePointInfo = loadfn(dir_ / "single_point_info.json")
         sp_info.corrected_energy = calc_results.energy + correction.energy
-        sp_info.is_shallow = band_edge_state.is_shallow
+        sp_info.magnetization = calc_results.magnetization
+        sp_info.localized_orbitals = [s.localized_orbitals for s in band_edge_states.states]
+        sp_info.is_shallow = band_edge_states.is_shallow
         sp_info.correction_method = correction.correction_type
         sp_info.to_json_file(dir_ / "single_point_info.json")
 
@@ -212,3 +268,17 @@ def _make_wswq_dir(dir_, original_dir):
     os.symlink((dir_/"WAVECAR").absolute(), (wswq_dir/"WAVECAR.qqq"))
 
     os.symlink((original_dir/"WAVECAR").absolute(), (wswq_dir/"WAVECAR"))
+
+
+def make_initial_e_p_coupling(args: Namespace):
+    make_init = MakeInitialEPCoupling(args.dephon_init,
+                                      args.ccd,
+                                      args.captured_carrier,
+                                      args.charge_for_e_p_coupling)
+    e_p_coupling = make_init.make()
+    print(e_p_coupling)
+    e_p_coupling.to_json_file()
+#
+#
+# def update_e_p_coupling(args: Namespace):
+#     add_inner_products(args.)

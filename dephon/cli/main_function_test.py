@@ -6,6 +6,7 @@ from argparse import Namespace
 from pathlib import Path
 
 from monty.serialization import loadfn
+from pydefect.analyzer.band_edge_states import LocalizedOrbital
 from pydefect.analyzer.unitcell import Unitcell
 from pymatgen.core import Structure
 from vise.input_set.incar import ViseIncar
@@ -13,11 +14,11 @@ from vise.input_set.prior_info import PriorInfo
 
 from dephon.cli.main_function import make_dephon_init, make_ccd, plot_ccd, \
     make_ccd_dirs, make_wswq_dirs, make_single_point_infos, make_single_ccd, \
-    plot_eigenvalues, set_quadratic_fitting_q_range
+    plot_eigenvalues, set_quadratic_fitting_q_range, make_initial_e_p_coupling
 from dephon.config_coord import SinglePointInfo, SingleCcd, Ccd
 from dephon.corrections import DephonCorrection
-from dephon.dephon_init import DephonInit, MinimumPointInfo
-from dephon.enum import CorrectionType
+from dephon.dephon_init import DephonInit, MinimumPointInfo, NearEdgeState
+from dephon.enum import CorrectionType, Carrier
 
 
 def test_make_dephon_init(test_files, tmpdir):
@@ -27,19 +28,23 @@ def test_make_dephon_init(test_files, tmpdir):
     args = Namespace(first_dir=dir_ / "Va_O1_1",
                      second_dir=dir_ / "Va_O1_0",
                      unitcell=Unitcell.from_yaml(dir_ / "unitcell.yaml"),
-                     p_state=loadfn(dir_ / "perfect_band_edge_state.json"))
+                     p_state=loadfn(dir_ / "perfect_band_edge_state.json"),
+                     effective_mass=loadfn(dir_ / "effective_mass.json"))
     make_dephon_init(args)
     actual = loadfn("cc/Va_O1_1_0/dephon_init.json").__str__()
     expected = """name: Va_O1
-vbm              1.740  supercell vbm  1.615
-cbm              4.705  supercell cbm  4.965
-dQ (amu^0.5 Å)   2.242
-dR (Å)           0.322
-M (amu)         48.367
+vbm                  1.740  supercell vbm  1.615
+cbm                  4.705  supercell cbm  4.965
+dQ (amu^0.5 Å)       2.242
+dR (Å)               0.322
+M (amu)             48.367
+electron mass (m0)   0.664
+hole mass (m0)       1.416
+static diele         3.374
 ------------------------------------------------------------
-  q   initial symm    final symm     energy    correction    corrected energy     ZPL
-  1        m              m           2.450         0.239               2.689
-  0        m              m           3.853         0.000               3.853  -1.164"""
+  q   ini symm    final symm     energy    correction    corrected energy    magnetization   localized state idx      ZPL
+  1      m            m           2.450         0.239               2.689            1.000    up-204, down-204
+  0      m            m           3.853         0.000               3.853            0.000         up-204          -1.164"""
     assert actual == expected
 
 
@@ -53,17 +58,48 @@ def test_make_ccd_dirs(tmpdir, ground_structure, excited_structure,
                                  structure=ground_structure,
                                  energy=10.0,
                                  correction_energy=200.0,
+                                 magnetization=0.0,
+                                 localized_orbitals=[[]],
                                  initial_site_symmetry="",
                                  final_site_symmetry="",
-                                 parsed_dir=""),
+                                 parsed_dir="",
+                                 valence_bands=[[NearEdgeState(band_index=10,
+                                                               kpt_coord=[0.0]*3,
+                                                               kpt_weight=1.0,
+                                                               kpt_index=1,
+                                                               eigenvalue=1.0,
+                                                               occupation=1.0)]],
+                                 conduction_bands=[[NearEdgeState(band_index=11,
+                                                                  kpt_coord=[0.0]*3,
+                                                                  kpt_weight=1.0,
+                                                                  kpt_index=1,
+                                                                  eigenvalue=2.0,
+                                                                  occupation=0.0)]]),
                 MinimumPointInfo(charge=0,
                                  structure=excited_structure,
                                  energy=10.0,
                                  correction_energy=100.0,
+                                 magnetization=1.0,
+                                 localized_orbitals=[[]],
                                  initial_site_symmetry="",
                                  final_site_symmetry="",
-                                 parsed_dir="")],
-        vbm=-100.0, cbm=100.0, supercell_vbm=-100.0, supercell_cbm=100.0)
+                                 parsed_dir="",
+                                 valence_bands=[[NearEdgeState(band_index=10,
+                                                               kpt_coord=[0.0]*3,
+                                                               kpt_weight=1.0,
+                                                               kpt_index=1,
+                                                               eigenvalue=1.0,
+                                                               occupation=1.0)]],
+                                 conduction_bands=[[NearEdgeState(band_index=11,
+                                                                  kpt_coord=[0.0]*3,
+                                                                  kpt_weight=1.0,
+                                                                  kpt_index=1,
+                                                                  eigenvalue=2.0,
+                                                                  occupation=0.0)]],
+                                 ),
+                ],
+        vbm=-100.0, cbm=100.0, supercell_vbm=-100.0, supercell_cbm=100.0,
+        ave_electron_mass=1.0, ave_hole_mass=1.0, ave_static_diele_const=1.0)
 
     Path("test").mkdir()
     args = Namespace(dephon_init=dephon_init,
@@ -119,9 +155,17 @@ def test_make_single_point_infos(test_files, tmpdir):
     make_single_point_infos(args)
 
     actual = loadfn("disp_0.0/single_point_info.json")
+    l_orb = LocalizedOrbital(band_idx=765,
+                             ave_energy=4.0831,
+                             occupation=0.0,
+                             orbitals={'Na': [0.022, 0.013, 0.0],
+                                       'P': [0.017, 0.28, 0.0]},
+                             participation_ratio=None, radius=None, center=None)
     expected = SinglePointInfo(dQ=0.0,
                                disp_ratio=0.0,
                                corrected_energy=-2223.75521961,
+                               magnetization=1.000161,
+                               localized_orbitals=[[], [l_orb]],
                                is_shallow=False,
                                correction_method=CorrectionType.extended_FNV)
     assert actual == expected
@@ -236,6 +280,24 @@ def test_make_wswq_dirs(tmpdir, mocker):
         assert Path(wswq_dir/"WAVECAR").is_symlink()
 
     assert Path("excited/disp_-0.2/wswq/KPOINTS").exists() is False
+
+
+def test_make_initial_e_p_coupling(tmpdir, test_files):
+    tmpdir.chdir()
+    va_p1 = Path(test_files) / "NaP/Va_P1_-1_0"
+    dephon_init = loadfn(va_p1 / "dephon_init.json")
+    ccd = loadfn(va_p1 / "ccd.json")
+    args = Namespace(dephon_init=dephon_init,
+                     ccd=ccd,
+                     captured_carrier=Carrier.p,
+                     charge_for_e_p_coupling=0)
+    make_initial_e_p_coupling(args)
+    e_p_coupling = loadfn("e_p_coupling.json")
+    print(e_p_coupling)
+
+
+# def test_update_e_p_coupling(tmpdir, test_files):
+
 
 
 """
