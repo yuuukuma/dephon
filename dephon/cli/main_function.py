@@ -15,6 +15,7 @@ from pydefect.cli.main_functions import get_calc_results
 from pydefect.cli.main_tools import parse_dirs
 from pymatgen.electronic_structure.core import Spin
 from vise.input_set.incar import ViseIncar
+from vise.input_set.prior_info import PriorInfo
 from vise.util.file_transfer import FileLink
 from vise.util.logger import get_logger
 
@@ -242,17 +243,18 @@ def plot_eigenvalues(args: Namespace):
 
 
 def make_wswq_dirs(args: Namespace):
-    for dir_ in args.ground_dirs:
-        _make_wswq_dir(dir_, args.dephon_init.single_ccd.dir_path)
-    for dir_ in args.excited_dirs:
-        _make_wswq_dir(dir_, args.dephon_init.excited_state.dir_path)
+    for dir_ in args.dirs:
+        _make_wswq_dir(dir_, args.dephon_init)
 
 
-def _make_wswq_dir(dir_, original_dir):
+def _make_wswq_dir(dir_, dephon_init: DephonInit):
     wswq_dir = (dir_ / "wswq")
     if wswq_dir.exists():
         logger.info(f"Directory {wswq_dir} exists, so skip creating it.")
         return
+
+    charge = PriorInfo.load_yaml(dir_ / "prior_info.yaml")
+    original_dir = dephon_init.min_info_from_charge(charge).dir_path
 
     wswq_dir.mkdir()
     logger.info(f"Directory {wswq_dir} was created.")
