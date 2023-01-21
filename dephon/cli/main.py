@@ -199,9 +199,7 @@ def parse_args_main(args):
     parser_make_wswq_dirs.add_argument(
         "--dephon_init", type=loadfn, default="dephon_init.json")
     parser_make_wswq_dirs.add_argument(
-        "--ground_dirs", type=Path, nargs="+", default=[])
-    parser_make_wswq_dirs.add_argument(
-        "--excited_dirs", type=Path, nargs="+", default=[])
+        "--dirs", type=Path, nargs="+", default=[])
 
     parser_make_wswq_dirs.set_defaults(func=make_wswq_dirs)
     # ------------------------------------------------------------------------
