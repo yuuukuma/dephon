@@ -28,6 +28,7 @@ class MakeInitialEPCoupling:
         self.charge = ccd.charge
         print(f"The base charge is set to {ccd.charge}")
         self._ground_point = ccd.disp_point_info(0.0)
+        print(self._ground_point)
         self._min_point = self.dephon_init.min_info_from_charge(self.charge)
 
     def _single_ccd_for_e_p_coupling(self, charge_for_e_p_coupling
