@@ -24,7 +24,7 @@ logger = get_logger(__name__)
 
 
 _imag_headers = ["dQ", "disp ratio", "corr. energy", "relative energy",
-                 "used for fitting?", "is shallow?"]
+                 "used for fitting?", "is shallow?", "localized orb"]
 
 
 @dataclass
@@ -50,8 +50,14 @@ class SinglePointInfo(MSONable, ToJsonFileMixIn):
 
     @property
     def table_for_plot(self):
+        localized_state_idxs = []
+        for s, spin in zip(self.localized_orbitals, ["up", "down"]):
+            for ss in s:
+                localized_state_idxs.append(f"{spin}-{ss.band_idx}")
+
         result = [self.dQ, self.disp_ratio, self.corrected_energy,
-                  self.relative_energy, self.used_for_fitting, self.is_shallow]
+                  self.relative_energy, self.used_for_fitting, self.is_shallow,
+                  ", ".join(localized_state_idxs)]
         return result
 #        return ["-" if x is None else x for x in result]
 

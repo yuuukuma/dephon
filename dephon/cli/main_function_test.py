@@ -9,15 +9,18 @@ from monty.serialization import loadfn
 from pydefect.analyzer.band_edge_states import LocalizedOrbital
 from pydefect.analyzer.unitcell import Unitcell
 from pymatgen.core import Structure
+from pymatgen.electronic_structure.core import Spin
 from vise.input_set.incar import ViseIncar
 from vise.input_set.prior_info import PriorInfo
 
 from dephon.cli.main_function import make_dephon_init, make_ccd, plot_ccd, \
     make_ccd_dirs, make_wswq_dirs, update_single_point_infos, make_single_ccd, \
-    plot_eigenvalues, set_quadratic_fitting_q_range, make_initial_e_p_coupling
+    plot_eigenvalues, set_quadratic_fitting_q_range, make_initial_e_p_coupling, \
+    update_e_p_coupling
 from dephon.config_coord import SinglePointInfo, SingleCcd, Ccd
 from dephon.corrections import DephonCorrection
 from dephon.dephon_init import DephonInit, MinimumPointInfo, NearEdgeState
+from dephon.ele_phon_coupling import EPCoupling, DefectBandId
 from dephon.enum import CorrectionType, Carrier
 
 
@@ -234,26 +237,39 @@ def test_make_wswq_dirs(tmpdir, mocker):
     print(tmpdir)
     tmpdir.chdir()
 
-    for state in ["ground", "excited"]:
+    for state, c in zip(["ground", "excited"], [0, 1]):
         Path(f"{state}_original").mkdir(parents=True)
         Path(f"{state}/disp_-0.2").mkdir(parents=True)
+
         Path(f"{state}_original/WAVECAR").write_text("wave")
         Path(f"{state}/disp_-0.2/KPOINTS").write_text("kpoints")
         Path(f"{state}/disp_-0.2/POSCAR").write_text("poscar")
         Path(f"{state}/disp_-0.2/POTCAR").write_text("potcar")
         Path(f"{state}/disp_-0.2/WAVECAR").write_text("qqq")
 
+        Path(f"{state}/disp_-0.2/prior_info.yaml").write_text(f"charge: {c}")
+
         incar = ViseIncar({"NSW": 100, "LORBIT": 11})
         incar.write_file(Path(f"{state}/disp_-0.2/INCAR"))
 
     Path(f"excited/disp_-0.2/wswq").mkdir()
 
-    dephon_init = mocker.MagicMock()
-    dephon_init.single_ccd.dir_path = Path(tmpdir / "ground_original")
-    dephon_init.excited_state.dir_path = Path(tmpdir/"excited_original")
+    min_point_info1 = mocker.MagicMock()
+    min_point_info2 = mocker.MagicMock()
+    min_point_info1.parsed_dir = str(tmpdir / "ground_original")
+    min_point_info1.charge = 0
 
-    args = Namespace(ground_dirs=[Path(f"ground/disp_-0.2")],
-                     excited_dirs=[Path(f"excited/disp_-0.2")],
+    min_point_info2.parsed_dir = str(tmpdir / "excited_original")
+    min_point_info2.charge = 1
+
+    dephon_init = DephonInit(defect_name="a",
+                             states=[min_point_info1, min_point_info2],
+                             vbm=1.0, cbm=2.0,
+                             supercell_vbm=1.0, supercell_cbm=2.0,
+                             ave_electron_mass=1.0, ave_hole_mass=1.0,
+                             ave_static_diele_const=1.0)
+
+    args = Namespace(dirs=[Path(f"ground/disp_-0.2"), Path(f"excited/disp_-0.2")],
                      dephon_init=dephon_init)
     make_wswq_dirs(args)
 
@@ -284,19 +300,33 @@ def test_make_wswq_dirs(tmpdir, mocker):
 
 def test_make_initial_e_p_coupling(tmpdir, test_files):
     tmpdir.chdir()
-    va_p1 = Path(test_files) / "NaP/Va_P1_-1_0"
+    va_p1 = test_files / "NaP/Va_P1_-1_0"
     dephon_init = loadfn(va_p1 / "dephon_init.json")
     ccd = loadfn(va_p1 / "ccd.json")
     args = Namespace(dephon_init=dephon_init,
                      ccd=ccd,
-                     captured_carrier=Carrier.p,
+                     captured_carrier=Carrier.h,
                      charge_for_e_p_coupling=0)
     make_initial_e_p_coupling(args)
     e_p_coupling = loadfn("e_p_coupling.json")
     print(e_p_coupling)
 
 
-# def test_update_e_p_coupling(tmpdir, test_files):
+def test_update_e_p_coupling(tmpdir, test_files):
+    print(tmpdir)
+    tmpdir.chdir()
+    orig = test_files / "NaP/Va_P1_-1_0/from_-1_to_0_after_make_single_point_infos/e_p_coupling.json"
+    shutil.copyfile(orig, tmpdir / "e_p_coupling.json")
+    args = Namespace(e_p_coupling_filename=tmpdir / "e_p_coupling.json",
+                     wswq_dirs=)
+
+
+    update_e_p_coupling(args)
+    expected: EPCoupling = loadfn(orig)
+    expected.e_p_matrix_elements = {DefectBandId(765, Spin.down): {}}
+
+    assert loadfn("e_p_coupling.json") == e_p_coupling
+
 
 
 

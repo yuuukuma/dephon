@@ -89,7 +89,7 @@ wswq_type = Dict[Optional[Tuple[int, int]], Dict[Tuple[int, int], complex]]
 
 
 def add_inner_products(e_p_coupling: EPCoupling,
-                       wswqs: wswq_type,
+                       wswq: wswq_type,
                        dQ: float,
                        used_for_fitting: bool = True):
     """    Returns
@@ -103,7 +103,7 @@ def add_inner_products(e_p_coupling: EPCoupling,
             spin_kpt_pair = (spin_idx, ep_matrix_elem.kpt_idx)
             band_indices = [id_.defect_band_index, edge_idx]
             band_indices.sort()
-            braket = np.abs(wswqs[spin_kpt_pair][tuple(band_indices)])
+            braket = np.abs(wswq[spin_kpt_pair][tuple(band_indices)])
             inner_prod = InnerProduct(inner_product=braket,
                                       dQ=dQ,
                                       used_for_fitting=used_for_fitting)

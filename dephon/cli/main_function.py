@@ -6,6 +6,7 @@ from pathlib import Path
 
 import yaml
 from monty.serialization import loadfn
+from nonrad.elphon import _read_WSWQ
 from pydefect.analyzer.band_edge_states import BandEdgeStates, \
     BandEdgeOrbitalInfos
 from pydefect.analyzer.calc_results import CalcResults
@@ -23,9 +24,11 @@ from dephon.config_coord import SinglePointInfo, CcdPlotter, \
     SingleCcd, SingleCcdId
 from dephon.corrections import DephonCorrection
 from dephon.dephon_init import DephonInit, MinimumPointInfo, NearEdgeState
+from dephon.ele_phon_coupling import EPCoupling
 from dephon.enum import CorrectionType
 from dephon.make_config_coord import MakeCcd
-from dephon.make_ele_phon_coupling import MakeInitialEPCoupling
+from dephon.make_ele_phon_coupling import MakeInitialEPCoupling, \
+    add_inner_products
 from dephon.plot_eigenvalues import DephonEigenvaluePlotter
 from dephon.util import spin_to_idx
 
@@ -254,7 +257,7 @@ def _make_wswq_dir(dir_, dephon_init: DephonInit):
         return
 
     charge = PriorInfo.load_yaml(dir_ / "prior_info.yaml").charge
-    original_dir = dephon_init.min_info_from_charge(charge).dir_path
+    original_dir = Path(dephon_init.min_info_from_charge(charge).parsed_dir)
 
     wswq_dir.mkdir()
     logger.info(f"Directory {wswq_dir} was created.")
@@ -280,7 +283,14 @@ def make_initial_e_p_coupling(args: Namespace):
     e_p_coupling = make_init.make()
     print(e_p_coupling)
     e_p_coupling.to_json_file()
-#
-#
-# def update_e_p_coupling(args: Namespace):
-#     add_inner_products(args.)
+
+
+def update_e_p_coupling(args: Namespace):
+    result: EPCoupling = loadfn(args.e_p_coupling_filename)
+
+    for dir_ in args.dirs:
+        single_info: SinglePointInfo = loadfn(dir_ / "single_point_info.json")
+        wswq = _read_WSWQ(dir_ / "wswq/WSWQ")
+        add_inner_products(result, wswq=wswq, dQ=single_info.dQ)
+
+    result.to_json_file(args.e_p_coupling_filename)

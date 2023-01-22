@@ -52,8 +52,6 @@ class EPMatrixElement(MSONable):
 class DefectBandId(MSONable):
     """ E-P matrix elements for _default_single_ccd_for_e_p_coupling particular defect
         band_edge_index: The band edge index starting from 1.
-
-
     """
     defect_band_index: int
     spin_channel: Spin
@@ -69,8 +67,8 @@ class EPCoupling(MSONable, ToJsonFileMixIn):
     charge: int
     captured_carrier: Carrier
     volume: float
-    ave_captured_carrier_mass: float = None
-    ave_static_diele_const: float = None
+    ave_captured_carrier_mass: float
+    ave_static_diele_const: float
     # int is band_edge_index.
     e_p_matrix_elements: Dict[DefectBandId, Dict[int, EPMatrixElement]] = None
 
