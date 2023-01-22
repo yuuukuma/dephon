@@ -56,6 +56,17 @@ class DefectBandId(MSONable):
     defect_band_index: int
     spin_channel: Spin
 
+    def to_str(self):
+        spin = "up" if self.spin_channel is Spin.up else "down"
+        return f"band: {self.defect_band_index}, spin: {spin}"
+
+    @classmethod
+    def from_str(cls, string: str):
+        _, band_idx, _, spin = string.split(" ")
+        band_idx = int(band_idx.split(",")[0])
+        spin = Spin.up if spin == "up" else Spin.down
+        return DefectBandId(band_idx, spin)
+
 
 @dataclass
 class EPCoupling(MSONable, ToJsonFileMixIn):
@@ -72,7 +83,21 @@ class EPCoupling(MSONable, ToJsonFileMixIn):
     # int is band_edge_index.
     e_p_matrix_elements: Dict[DefectBandId, Dict[int, EPMatrixElement]] = None
 
-    def set_inner_prod(self, d: Dict[DefectBandId, Dict[int, List[InnerProduct]]]):
+    def as_dict(self) -> dict:
+        result = super().as_dict()
+        result["e_p_matrix_elements"] = \
+            {k.to_str(): v for k, v in result["e_p_matrix_elements"].items()}
+        return result
+
+    @classmethod
+    def from_dict(cls, d: dict):
+        d["e_p_matrix_elements"] = \
+            {DefectBandId.from_str(k): v
+             for k, v in d["e_p_matrix_elements"].items()}
+        return cls(**d)
+
+    def set_inner_prod(self,
+                       d: Dict[DefectBandId, Dict[int, List[InnerProduct]]]):
         for k, v in d.items():
             for kk, vv in v.items():
                 self.e_p_matrix_elements[k][kk].inner_products = vv

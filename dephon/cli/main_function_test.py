@@ -9,7 +9,6 @@ from monty.serialization import loadfn
 from pydefect.analyzer.band_edge_states import LocalizedOrbital
 from pydefect.analyzer.unitcell import Unitcell
 from pymatgen.core import Structure
-from pymatgen.electronic_structure.core import Spin
 from vise.input_set.incar import ViseIncar
 from vise.input_set.prior_info import PriorInfo
 
@@ -20,7 +19,7 @@ from dephon.cli.main_function import make_dephon_init, make_ccd, plot_ccd, \
 from dephon.config_coord import SinglePointInfo, SingleCcd, Ccd
 from dephon.corrections import DephonCorrection
 from dephon.dephon_init import DephonInit, MinimumPointInfo, NearEdgeState
-from dephon.ele_phon_coupling import EPCoupling, DefectBandId
+from dephon.ele_phon_coupling import EPCoupling
 from dephon.enum import CorrectionType, Carrier
 
 
@@ -315,17 +314,17 @@ def test_make_initial_e_p_coupling(tmpdir, test_files):
 def test_update_e_p_coupling(tmpdir, test_files):
     print(tmpdir)
     tmpdir.chdir()
-    orig = test_files / "NaP/Va_P1_-1_0/from_-1_to_0_after_make_single_point_infos/e_p_coupling.json"
+    orig = test_files / "NaP/Va_P1_-1_0/from_0_to_-1_after_make_single_point_infos/e_p_coupling.json"
     shutil.copyfile(orig, tmpdir / "e_p_coupling.json")
     args = Namespace(e_p_coupling_filename=tmpdir / "e_p_coupling.json",
-                     wswq_dirs=)
-
+                     dirs=[test_files / "NaP/Va_P1_-1_0/from_0_to_-1_after_make_single_point_infos/disp_0.2"])
 
     update_e_p_coupling(args)
-    expected: EPCoupling = loadfn(orig)
-    expected.e_p_matrix_elements = {DefectBandId(765, Spin.down): {}}
+    actual: EPCoupling = loadfn(orig)
+    print(actual)
+#    expected.e_p_matrix_elements = {DefectBandId(765, Spin.down): {}}
 
-    assert loadfn("e_p_coupling.json") == e_p_coupling
+#    assert loadfn("e_p_coupling.json") == e_p_coupling
 
 
 

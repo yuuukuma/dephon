@@ -152,6 +152,7 @@ def e_p_coupling():
     ip_3 = InnerProduct(inner_product=2.0, dQ=1.0, used_for_fitting=True)
 
     matrix = EPMatrixElement(eigenvalue_diff=0.1,
+                             kpt_idx=1,
                              kpt_coord=[0.0, 0.0, 0.0],
                              inner_products=[ip_1, ip_2, ip_3])
 
@@ -159,4 +160,6 @@ def e_p_coupling():
         charge=1,
         captured_carrier=Carrier.e,
         volume=100.0,
+        ave_captured_carrier_mass=1.0,
+        ave_static_diele_const=2.0,
         e_p_matrix_elements={DefectBandId(1, Spin.down): {2: matrix}})
