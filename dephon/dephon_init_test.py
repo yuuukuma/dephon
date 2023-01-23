@@ -22,6 +22,7 @@ def test_get_dR():
 
 vb_nes = NearEdgeState(band_index=1,
                        kpt_coord=[0.0]*3,
+                       kpt_weight=1.0,
                        kpt_index=1,
                        eigenvalue=1.5,
                        occupation=1.0)
@@ -35,6 +36,7 @@ def minimum_point_info(ground_structure):
                                 orbitals={"O": [0.0, 1.0, 0.0]})
     cb_nes_up = NearEdgeState(band_index=2,
                               kpt_coord=[0.0]*3,
+                              kpt_weight=1.0,
                               kpt_index=1,
                               eigenvalue=2.5,
                               occupation=0.0)
@@ -46,7 +48,7 @@ def minimum_point_info(ground_structure):
                             correction_energy=1.0,
                             magnetization=1.0,
                             localized_orbitals=[[], [orb_info]],
-                            valence_bands=[[vb_nes], [vb_nes]],
+                            valence_bands=[[vb_nes]],
                             conduction_bands=[[cb_nes_up], [cb_nes_down]],
                             initial_site_symmetry="4mm",
                             final_site_symmetry="2/m",
@@ -63,7 +65,7 @@ def test_minimum_point_info_degeneracy_by_symm_reduction(minimum_point_info):
 
 def test_minimum_point_info_near_edge_states(minimum_point_info):
     actual = minimum_point_info.near_edge_states(
-        captured_carrier=Carrier.h, spin=Spin.up)
+        captured_carrier=Carrier.h, spin=Spin.down)
     assert actual == [vb_nes]
 
 

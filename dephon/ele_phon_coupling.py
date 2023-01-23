@@ -1,10 +1,9 @@
 # -*- coding: utf-8 -*-
 #  Copyright (c) 2022 Kumagai group.
 from dataclasses import dataclass, field
-from typing import List, Dict
+from typing import List
 
 from monty.json import MSONable
-from pymatgen.electronic_structure.core import Spin
 from vise.util.mix_in import ToJsonFileMixIn
 
 from dephon.enum import Carrier
@@ -35,6 +34,9 @@ class EPMatrixElement(MSONable):
         inner_products: List of \bra_{psi_i(0)} | S(0) |\ket_{psi_f(Q)}
             at the given Q points.
     """
+    band_edge_index: int
+    defect_band_index: int
+    spin_idx: int  # spin up: 0, spin down: 1
     eigenvalue_diff: float
     kpt_idx: int
     # Currently, symmetry is assumed not to be changed depending on dQ.
@@ -46,26 +48,6 @@ class EPMatrixElement(MSONable):
     #     """ Evaluated by computing the slope of inner products"""
     #     # np.polyfit(Q, matels[i, :], 1)[0])
     #     pass
-
-
-@dataclass(frozen=True)
-class DefectBandId(MSONable):
-    """ E-P matrix elements for _default_single_ccd_for_e_p_coupling particular defect
-        band_edge_index: The band edge index starting from 1.
-    """
-    defect_band_index: int
-    spin_channel: Spin
-
-    def to_str(self):
-        spin = "up" if self.spin_channel is Spin.up else "down"
-        return f"band: {self.defect_band_index}, spin: {spin}"
-
-    @classmethod
-    def from_str(cls, string: str):
-        _, band_idx, _, spin = string.split(" ")
-        band_idx = int(band_idx.split(",")[0])
-        spin = Spin.up if spin == "up" else Spin.down
-        return DefectBandId(band_idx, spin)
 
 
 @dataclass
@@ -81,24 +63,11 @@ class EPCoupling(MSONable, ToJsonFileMixIn):
     ave_captured_carrier_mass: float
     ave_static_diele_const: float
     # int is band_edge_index.
-    e_p_matrix_elements: Dict[DefectBandId, Dict[int, EPMatrixElement]] = None
+    e_p_matrix_elements: List[EPMatrixElement] = None
 
-    def as_dict(self) -> dict:
-        result = super().as_dict()
-        result["e_p_matrix_elements"] = \
-            {k.to_str(): v for k, v in result["e_p_matrix_elements"].items()}
-        return result
-
-    @classmethod
-    def from_dict(cls, d: dict):
-        d["e_p_matrix_elements"] = \
-            {DefectBandId.from_str(k): v
-             for k, v in d["e_p_matrix_elements"].items()}
-        return cls(**d)
-
-    def set_inner_prod(self,
-                       d: Dict[DefectBandId, Dict[int, List[InnerProduct]]]):
-        for k, v in d.items():
-            for kk, vv in v.items():
-                self.e_p_matrix_elements[k][kk].inner_products = vv
+    # def set_inner_prod(self,
+    #                    d: Dict[, Dict[int, List[InnerProduct]]]):
+    #     for k, v in d.items():
+    #         for kk, vv in v.items():
+    #             self.e_p_matrix_elements[k][kk].inner_products = vv
 

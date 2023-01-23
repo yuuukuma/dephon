@@ -103,9 +103,10 @@ class MinimumPointInfo(MSONable):
     def near_edge_states(self,
                          captured_carrier: Carrier,
                          spin: Spin) -> List[NearEdgeState]:
-        if captured_carrier is Carrier.e:
-            return self.conduction_bands[spin_to_idx(spin)]
-        return self.valence_bands[spin_to_idx(spin)]
+        bands = self.conduction_bands \
+            if captured_carrier is Carrier.e else self.valence_bands
+        idx = 0 if len(bands) == 1 else spin_to_idx(spin)
+        return bands[idx]
 
     @property
     def relevant_band_indices(self):

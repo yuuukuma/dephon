@@ -5,12 +5,10 @@ from copy import deepcopy
 import pytest
 from pydefect.analyzer.band_edge_states import LocalizedOrbital
 from pymatgen.core import Lattice, Structure
-from pymatgen.electronic_structure.core import Spin
 
 from dephon.config_coord import Ccd, SingleCcd, SinglePointInfo, SingleCcdId
 from dephon.dephon_init import DephonInit, MinimumPointInfo, NearEdgeState
-from dephon.ele_phon_coupling import EPMatrixElement, EPCoupling, DefectBandId, \
-    InnerProduct
+from dephon.ele_phon_coupling import EPCoupling, InnerProduct
 from dephon.enum import Carrier
 from dephon.make_ele_phon_coupling import MakeInitialEPCoupling, \
     add_inner_products
@@ -78,28 +76,18 @@ def test_make_initial_e_p_coupling_base_charge(
         MakeInitialEPCoupling(**common, charge_for_e_p_coupling=-2)
 
 
-@pytest.fixture
-def e_p_coupling():
-    return EPCoupling(charge=0,
-                      captured_carrier=Carrier.h,
-                      volume=8.0,
-                      ave_captured_carrier_mass=0.02,
-                      ave_static_diele_const=0.03,
-                      e_p_matrix_elements=
-                      {DefectBandId(102, Spin.up): {101: EPMatrixElement(eigenvalue_diff=1.0, kpt_idx=1, kpt_coord=[0.0, 0.0, 0.0])}})
-
-
-def test_make_initial_e_p_coupling(make_e_p_coupling_h, e_p_coupling):
-    assert make_e_p_coupling_h.make() == e_p_coupling
+def test_make_initial_e_p_coupling(make_e_p_coupling_h):
+    expected = EPCoupling(charge=0, captured_carrier=Carrier.h, volume=8.0, ave_captured_carrier_mass=0.02, ave_static_diele_const=0.03, e_p_matrix_elements=[])
+    assert make_e_p_coupling_h.make() == expected
 
 
 def test_add_initial_e_p_coupling(e_p_coupling):
+    e_p_coupling.e_p_matrix_elements[0].inner_products = []
     spin, kpoint = 0, 1
-    wswqs = {(spin, kpoint): {(101, 102): 3.0 + 4.0j}}
+    wswqs = {(spin, kpoint): {(1, 2): 3.0 + 4.0j}}
 
     add_inner_products(e_p_coupling, wswqs, dQ=3.0)
-    actual = e_p_coupling.e_p_matrix_elements[
-        DefectBandId(102, Spin.up)][101].inner_products[0]
-    expected = InnerProduct(inner_product=5.0, dQ=3.0, used_for_fitting=True)
+    actual = e_p_coupling.e_p_matrix_elements[0].inner_products
+    expected = [InnerProduct(inner_product=5.0, dQ=3.0, used_for_fitting=True)]
 
     assert actual == expected

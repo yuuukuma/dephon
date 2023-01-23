@@ -305,6 +305,7 @@ def test_make_initial_e_p_coupling(tmpdir, test_files):
     args = Namespace(dephon_init=dephon_init,
                      ccd=ccd,
                      captured_carrier=Carrier.h,
+                     disp=0.0,
                      charge_for_e_p_coupling=0)
     make_initial_e_p_coupling(args)
     e_p_coupling = loadfn("e_p_coupling.json")

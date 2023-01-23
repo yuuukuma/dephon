@@ -1,9 +1,7 @@
 # -*- coding: utf-8 -*-
 #  Copyright (c) 2022 Kumagai group.
-from pymatgen.electronic_structure.core import Spin
 from vise.tests.helpers.assertion import assert_json_roundtrip
 
-from dephon.ele_phon_coupling import DefectBandId
 
 
 def test_e_p_coupling_to_json_file(e_p_coupling, tmpdir):
@@ -12,26 +10,11 @@ def test_e_p_coupling_to_json_file(e_p_coupling, tmpdir):
 
 def test_reset_inner_products(e_p_coupling):
     e_p_coupling.reset_inner_prod()
-    actual = e_p_coupling.e_p_matrix_elements[DefectBandId(1, Spin.down)][0].inner_products
+    actual = e_p_coupling.e_p_matrix_elements[1][0].inner_products
     expected = []
     assert actual == expected
 
 
-def test_as_dict(e_p_coupling):
-    actual = list(e_p_coupling.as_dict()["e_p_matrix_elements"].keys())
-    expected = ["band: 1, spin: down"]
-    assert actual == expected
-
-
-def test_defect_band_id_to_str():
-    actual = DefectBandId(1, Spin.down)
-    assert actual.to_str() == "band: 1, spin: down"
-
-    actual = "band: 1, spin: down"
-    assert DefectBandId.from_str(actual) == DefectBandId(1, Spin.down)
-
-
-#
 # def test_make_initial_e_p_coupling(dephon_init, ccd):
 #     unitcell = Unitcell("", 1.0, 2.0,
 #                         ele_dielectric_const=[[1.0, 0.0, 0.0],

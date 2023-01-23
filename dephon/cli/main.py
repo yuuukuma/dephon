@@ -184,6 +184,8 @@ def parse_args_main(args):
         "-cc", "--captured_carrier", type=Carrier, required=True,
         choices=Carrier.name_list())
     parser_make_initial_e_p_coupling.add_argument(
+        "-d", "--disp", type=float, default=0.0)
+    parser_make_initial_e_p_coupling.add_argument(
         "--charge_for_e_p_coupling", type=int,
         help="Default is a charge with smaller absolute value.")
     parser_make_initial_e_p_coupling.set_defaults(
@@ -202,6 +204,18 @@ def parse_args_main(args):
         "--dirs", type=Path, nargs="+", default=[])
 
     parser_make_wswq_dirs.set_defaults(func=make_wswq_dirs)
+
+    # -- update_e_p_coupling -----------------------------------
+    parser_update_e_p_coupling = subparsers.add_parser(
+        name="update_e_p_coupling",
+        description="Make directories for calculating WSWQ files.",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+        aliases=['mwd'])
+
+    parser_update_e_p_coupling.add_argument(
+        "--e_p_coupling_filename", type=Path, default="dephon_init.json")
+
+    parser_update_e_p_coupling.set_defaults(func=make_wswq_dirs)
     # ------------------------------------------------------------------------
     return parser.parse_args(args)
 

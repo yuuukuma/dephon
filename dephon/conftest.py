@@ -6,12 +6,10 @@ from pathlib import Path
 import pytest
 from pydefect.analyzer.band_edge_states import LocalizedOrbital
 from pymatgen.core import Structure, Lattice
-from pymatgen.electronic_structure.core import Spin
 
 from dephon.config_coord import SinglePointInfo, Ccd, SingleCcd, SingleCcdId
 from dephon.dephon_init import MinimumPointInfo, DephonInit, NearEdgeState
-from dephon.ele_phon_coupling import InnerProduct, EPMatrixElement, EPCoupling, \
-    DefectBandId
+from dephon.ele_phon_coupling import InnerProduct, EPMatrixElement, EPCoupling
 from dephon.enum import Carrier
 
 
@@ -151,7 +149,10 @@ def e_p_coupling():
     ip_2 = InnerProduct(inner_product=1.0, dQ=0.0, used_for_fitting=True)
     ip_3 = InnerProduct(inner_product=2.0, dQ=1.0, used_for_fitting=True)
 
-    matrix = EPMatrixElement(eigenvalue_diff=0.1,
+    matrix = EPMatrixElement(band_edge_index=1,
+                             defect_band_index=2,
+                             spin_idx=0,
+                             eigenvalue_diff=0.1,
                              kpt_idx=1,
                              kpt_coord=[0.0, 0.0, 0.0],
                              inner_products=[ip_1, ip_2, ip_3])
@@ -162,4 +163,4 @@ def e_p_coupling():
         volume=100.0,
         ave_captured_carrier_mass=1.0,
         ave_static_diele_const=2.0,
-        e_p_matrix_elements={DefectBandId(1, Spin.down): {2: matrix}})
+        e_p_matrix_elements=[matrix])

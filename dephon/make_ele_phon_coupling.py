@@ -3,14 +3,14 @@
 from typing import Dict, Tuple, Optional
 
 import numpy as np
-from pymatgen.electronic_structure.core import Spin
+from vise.util.logger import get_logger
 
 from dephon.config_coord import Ccd, SingleCcd
 from dephon.dephon_init import DephonInit
-from dephon.ele_phon_coupling import EPCoupling, DefectBandId, EPMatrixElement, \
-    InnerProduct
+from dephon.ele_phon_coupling import EPCoupling, EPMatrixElement, InnerProduct
 from dephon.enum import Carrier
-from dephon.util import spin_to_idx
+
+logger = get_logger(__name__)
 
 
 class MakeInitialEPCoupling:
@@ -18,6 +18,7 @@ class MakeInitialEPCoupling:
                  dephon_init: DephonInit,
                  ccd: Ccd,
                  captured_carrier: Carrier,
+                 disp: float = 0.0,
                  charge_for_e_p_coupling: int = None):
         self.dephon_init = dephon_init
         self.captured_carrier = captured_carrier
@@ -26,9 +27,8 @@ class MakeInitialEPCoupling:
 
         ccd = self._single_ccd_for_e_p_coupling(charge_for_e_p_coupling)
         self.charge = ccd.charge
-        print(f"The base charge is set to {ccd.charge}")
-        self._ground_point = ccd.disp_point_info(0.0)
-        print(self._ground_point)
+        logger.info(f"The base charge and disp are set to {ccd.charge} and {disp}")
+        self._ground_point = ccd.disp_point_info(disp)
         self._min_point = self.dephon_init.min_info_from_charge(self.charge)
 
     def _single_ccd_for_e_p_coupling(self, charge_for_e_p_coupling
@@ -60,29 +60,28 @@ class MakeInitialEPCoupling:
 
     @property
     def _e_p_matrix_elements(self):
-        result = {}
+        result = []
         if self._ground_point.localized_orbitals:
-            for los_by_spin, spin in zip(self._ground_point.localized_orbitals,
-                                         [Spin.up, Spin.down]):
+            for spin, los_by_spin in enumerate(self._ground_point.localized_orbitals):
                 for loc_orb in los_by_spin:
                     if self.captured_carrier.is_occupied(loc_orb.occupation):
                         continue
 
-                    defect_band_id = DefectBandId(loc_orb.band_idx, spin)
-                    result[defect_band_id] = self._matrix_elements(loc_orb, spin)
+                    result = self._matrix_elements(loc_orb, spin)
 
         return result
 
     def _matrix_elements(self, lo, spin):
-        result = {}
-        near_edge_states = \
-            self._min_point.near_edge_states(self.captured_carrier, spin)
-
+        result = []
+        near_edge_states = self._min_point.near_edge_states(self.captured_carrier, spin)
         for state in near_edge_states:
             eigenvalue_diff = abs(state.eigenvalue - lo.ave_energy)
-            result[state.band_index] = EPMatrixElement(eigenvalue_diff,
-                                                       state.kpt_index,
-                                                       state.kpt_coord)
+            result.append(EPMatrixElement(state.band_index,
+                                          lo.band_idx,
+                                          spin,
+                                          eigenvalue_diff,
+                                          state.kpt_index,
+                                          state.kpt_coord))
 
         return result
 
@@ -99,14 +98,11 @@ def add_inner_products(e_p_coupling: EPCoupling,
     dict(dict)
         a dict of dicts that takes keys (spin, kpoint) and (initial, final) as
         indices and maps it to a complex number"""
-    for id_, val in e_p_coupling.e_p_matrix_elements.items():
-        for edge_idx, ep_matrix_elem in val.items():
-            spin_idx = spin_to_idx(id_.spin_channel)
-            spin_kpt_pair = (spin_idx, ep_matrix_elem.kpt_idx)
-            band_indices = [id_.defect_band_index, edge_idx]
-            band_indices.sort()
-            braket = np.abs(wswq[spin_kpt_pair][tuple(band_indices)])
-            inner_prod = InnerProduct(inner_product=braket,
-                                      dQ=dQ,
-                                      used_for_fitting=used_for_fitting)
-            ep_matrix_elem.inner_products.append(inner_prod)
+    for ep_elem in e_p_coupling.e_p_matrix_elements:
+        spin_kpt_pair = (ep_elem.spin_idx, ep_elem.kpt_idx)
+        band_indices = (ep_elem.band_edge_index, ep_elem.defect_band_index)
+        braket = np.abs(wswq[spin_kpt_pair][tuple(band_indices)])
+        inner_prod = InnerProduct(inner_product=braket,
+                                  dQ=dQ,
+                                  used_for_fitting=used_for_fitting)
+        ep_elem.inner_products.append(inner_prod)

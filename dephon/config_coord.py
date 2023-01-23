@@ -53,7 +53,7 @@ class SinglePointInfo(MSONable, ToJsonFileMixIn):
         localized_state_idxs = []
         for s, spin in zip(self.localized_orbitals, ["up", "down"]):
             for ss in s:
-                localized_state_idxs.append(f"{spin}-{ss.band_idx}")
+                localized_state_idxs.append(f"{spin}-{ss.band_idx}({ss.occupation:.1f})")
 
         result = [self.dQ, self.disp_ratio, self.corrected_energy,
                   self.relative_energy, self.used_for_fitting, self.is_shallow,

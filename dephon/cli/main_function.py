@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 #  Copyright (c) 2022 Kumagai group.
+import json
 import os
 from argparse import Namespace
 from pathlib import Path
@@ -279,6 +280,7 @@ def make_initial_e_p_coupling(args: Namespace):
     make_init = MakeInitialEPCoupling(args.dephon_init,
                                       args.ccd,
                                       args.captured_carrier,
+                                      args.disp,
                                       args.charge_for_e_p_coupling)
     e_p_coupling = make_init.make()
     print(e_p_coupling)
@@ -286,7 +288,8 @@ def make_initial_e_p_coupling(args: Namespace):
 
 
 def update_e_p_coupling(args: Namespace):
-    result: EPCoupling = loadfn(args.e_p_coupling_filename)
+    result = EPCoupling.from_dict(json.load(args.e_p_coupling_filename))
+    print(result)
 
     for dir_ in args.dirs:
         single_info: SinglePointInfo = loadfn(dir_ / "single_point_info.json")
