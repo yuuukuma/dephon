@@ -27,9 +27,9 @@ class MakeInitialEPCoupling:
 
         ccd = self._single_ccd_for_e_p_coupling(charge_for_e_p_coupling)
         self.charge = ccd.charge
+        self.disp = disp
         logger.info(f"The base charge and disp are set to {ccd.charge} and {disp}")
         self._ground_point = ccd.disp_point_info(disp)
-        self._min_point = self.dephon_init.min_info_from_charge(self.charge)
 
     def _single_ccd_for_e_p_coupling(self, charge_for_e_p_coupling
                                      ) -> SingleCcd:
@@ -52,6 +52,7 @@ class MakeInitialEPCoupling:
     def make(self):
         return EPCoupling(
             charge=self.charge,
+            disp=self.disp,
             captured_carrier=self.captured_carrier,
             volume=self.dephon_init.volume,
             ave_captured_carrier_mass=self.dephon_init.ave_hole_mass,
@@ -72,8 +73,7 @@ class MakeInitialEPCoupling:
 
     def _matrix_elements(self, lo, spin):
         result = []
-        near_edge_states = \
-            self._min_point.near_edge_states(self.captured_carrier, spin)
+        near_edge_states = self._ground_point.near_edge_states(self.captured_carrier, spin)
         for state in near_edge_states:
             eigenvalue_diff = abs(state.eigenvalue - lo.ave_energy)
             result.append(EPMatrixElement(state.band_index,

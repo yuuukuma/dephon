@@ -46,7 +46,31 @@ static diele         3.374
 ------------------------------------------------------------
   q   ini symm    final symm     energy    correction    corrected energy    magnetization   localized state idx      ZPL
   1      m            m           2.450         0.239               2.689            1.000    up-204, down-204
-  0      m            m           3.853         0.000               3.853            0.000         up-204          -1.164"""
+  0      m            m           3.853         0.000               3.853            0.000         up-204          -1.164
+- q=1
+-- valence bands, spin-up
+band index: 204, kpt info: (index : 1, coord: 0.25 0.25 0.00, weight: 0.5), eigenvalue: 1.60, occupation: 1.00
+band index: 204, kpt info: (index : 2, coord: -0.25 0.25 0.00, weight: 0.5), eigenvalue: 1.58, occupation: 1.00
+-- valence bands, spin-down
+band index: 204, kpt info: (index : 1, coord: 0.25 0.25 0.00, weight: 0.5), eigenvalue: 1.61, occupation: 1.00
+band index: 204, kpt info: (index : 2, coord: -0.25 0.25 0.00, weight: 0.5), eigenvalue: 1.60, occupation: 1.00
+
+-- conduction bands, spin-up
+band index: 206, kpt info: (index : 1, coord: 0.25 0.25 0.00, weight: 0.5), eigenvalue: 5.05, occupation: 0.00
+band index: 206, kpt info: (index : 2, coord: -0.25 0.25 0.00, weight: 0.5), eigenvalue: 5.06, occupation: 0.00
+-- conduction bands, spin-down
+band index: 206, kpt info: (index : 1, coord: 0.25 0.25 0.00, weight: 0.5), eigenvalue: 5.13, occupation: 0.00
+band index: 206, kpt info: (index : 2, coord: -0.25 0.25 0.00, weight: 0.5), eigenvalue: 5.15, occupation: 0.00
+
+- q=0
+-- valence bands, spin-up
+band index: 204, kpt info: (index : 1, coord: 0.25 0.25 0.00, weight: 0.5), eigenvalue: 1.54, occupation: 1.00
+band index: 204, kpt info: (index : 2, coord: -0.25 0.25 0.00, weight: 0.5), eigenvalue: 1.52, occupation: 1.00
+
+-- conduction bands, spin-up
+band index: 206, kpt info: (index : 1, coord: 0.25 0.25 0.00, weight: 0.5), eigenvalue: 5.04, occupation: 0.00
+band index: 206, kpt info: (index : 2, coord: -0.25 0.25 0.00, weight: 0.5), eigenvalue: 5.05, occupation: 0.00  
+  """
     assert actual == expected
 
 

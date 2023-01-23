@@ -28,6 +28,10 @@ vb_nes = NearEdgeState(band_index=1,
                        occupation=1.0)
 
 
+def test_near_edge_state_str():
+    print(vb_nes)
+
+
 @pytest.fixture
 def minimum_point_info(ground_structure):
     orb_info = LocalizedOrbital(band_idx=2,
@@ -103,5 +107,21 @@ static diele        13.000
 ------------------------------------------------------------
   q   ini symm     final symm    energy    correction    corrected energy    magnetization   localized state idx      ZPL
   0     2mm                 2    11.000        -1.000              10.000            0.000
-  1     2mm                 2    12.000        -1.000              11.000            1.000         down-2          -1.000"""
+  1     2mm                 2    12.000        -1.000              11.000            1.000         down-2          -1.000
+  q=0, spin-up  valence bands:
+band index: 1, kpt info: (index : 1, coord: 0.00 0.00 0.00, weight: 1.0), eigenvalue: 1.00, occupation: 1.00
+q=0, spin-down  valence bands:
+band index: 1, kpt info: (index : 1, coord: 0.00 0.00 0.00, weight: 1.0), eigenvalue: 1.00, occupation: 1.00
+q=0, spin-up  conduction bands:
+band index: 2, kpt info: (index : 1, coord: 0.00 0.00 0.00, weight: 1.0), eigenvalue: 3.00, occupation: 0.00
+q=0, spin-down  conduction bands:
+band index: 2, kpt info: (index : 1, coord: 0.00 0.00 0.00, weight: 1.0), eigenvalue: 3.00, occupation: 0.00
+q=1, spin-up  valence bands:
+band index: 1, kpt info: (index : 1, coord: 0.00 0.00 0.00, weight: 1.0), eigenvalue: 1.00, occupation: 1.00
+q=1, spin-down  valence bands:
+band index: 1, kpt info: (index : 1, coord: 0.00 0.00 0.00, weight: 1.0), eigenvalue: 1.00, occupation: 1.00
+q=1, spin-up  conduction bands:
+band index: 2, kpt info: (index : 1, coord: 0.00 0.00 0.00, weight: 1.0), eigenvalue: 3.00, occupation: 0.00
+q=1, spin-down  conduction bands:
+band index: 3, kpt info: (index : 1, coord: 0.00 0.00 0.00, weight: 1.0), eigenvalue: 3.00, occupation: 0.00"""
     assert actual == expected

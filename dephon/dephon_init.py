@@ -47,6 +47,17 @@ class NearEdgeState(MSONable):
     eigenvalue: float
     occupation: float
 
+    def __str__(self):
+        k_coord = " ".join([f"{x:.2f}" for x in self.kpt_coord])
+        k = [f"index : {self.kpt_index}",
+             f"coord: {k_coord}",
+             f"weight: {self.kpt_weight}"]
+        x = [f"band index: {self.band_index}",
+             f"kpt info: ({', '.join(k)})",
+             f"eigenvalue: {self.eigenvalue:.2f}",
+             f"occupation: {self.occupation:.2f}"]
+        return ", ".join(x)
+
 
 @dataclass
 class MinimumPointInfo(MSONable):
@@ -208,6 +219,7 @@ class DephonInit(MSONable, ToJsonFileMixIn):
         last_energy = None
 
         for state in self.states:
+
             localized_state_idxs = []
             for s, spin in zip(state.localized_orbitals, ["up", "down"]):
                 for ss in s:
@@ -225,6 +237,18 @@ class DephonInit(MSONable, ToJsonFileMixIn):
         result.append(
             tabulate(table, tablefmt="plain", headers=headers, floatfmt=".3f",
                      stralign="center"))
+
+        for min_info in self.states:
+            result.append(f"- q={min_info.charge}")
+            for vb, spin in zip(min_info.valence_bands, ["up", "down"]):
+                result.append(f"-- valence bands, spin-{spin}")
+                result.extend([f"{x}" for x in vb])
+            result.append(f"")
+            for cb, spin in zip(min_info.conduction_bands, ["up", "down"]):
+                result.append(f"-- conduction bands, spin-{spin}")
+                result.extend([f"{x}" for x in cb])
+            result.append(f"")
+
         return "\n".join(result)
 
 """ 

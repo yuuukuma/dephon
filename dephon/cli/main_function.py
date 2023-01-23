@@ -51,7 +51,7 @@ def make_near_edge_states(band_edge_orbital_infos: BandEdgeOrbitalInfos,
             e_from_band_edge = abs(info_by_band.energy - edge_energy)
             if e_from_band_edge > threshold:
                 continue
-            band_idx = rel_idx + band_edge_orbital_infos.lowest_band_index
+            band_idx = rel_idx + band_edge_orbital_infos.lowest_band_index + 1
             result.append(NearEdgeState(band_idx,
                                         k_coords,
                                         k_weight,
@@ -69,15 +69,8 @@ def make_min_point_info_from_dir(_dir: Path):
     band_edge_states: BandEdgeStates = loadfn(_dir / "band_edge_states.json")
 
     band_edge_orbital_infos: BandEdgeOrbitalInfos = loadfn(_dir / "band_edge_orbital_infos.json")
-    localized_orbitals, valence_bands, conduction_bands = [], [], []
-    for state, spin in zip(band_edge_states.states, [Spin.up, Spin.down]):
-        localized_orbitals.append(state.localized_orbitals)
-        valence_bands.append(make_near_edge_states(band_edge_orbital_infos,
-                                                   spin,
-                                                   state.vbm_info.energy))
-        conduction_bands.append(make_near_edge_states(band_edge_orbital_infos,
-                                                      spin,
-                                                      state.cbm_info.energy))
+    localized_orbitals, valence_bands, conduction_bands = get_orbs(
+        band_edge_orbital_infos, band_edge_states)
     min_point_info = MinimumPointInfo(
         charge=energy_info.charge,
         structure=calc_results.structure,
@@ -92,6 +85,19 @@ def make_min_point_info_from_dir(_dir: Path):
         conduction_bands=conduction_bands)
 
     return min_point_info, energy_info.name
+
+
+def get_orbs(band_edge_orbital_infos, band_edge_states):
+    localized_orbitals, valence_bands, conduction_bands = [], [], []
+    for state, spin in zip(band_edge_states.states, [Spin.up, Spin.down]):
+        localized_orbitals.append(state.localized_orbitals)
+        valence_bands.append(make_near_edge_states(band_edge_orbital_infos,
+                                                   spin,
+                                                   state.vbm_info.energy))
+        conduction_bands.append(make_near_edge_states(band_edge_orbital_infos,
+                                                      spin,
+                                                      state.cbm_info.energy))
+    return localized_orbitals, valence_bands, conduction_bands,
 
 
 def make_dephon_init(args: Namespace):
@@ -180,12 +186,18 @@ def update_single_point_infos(args: Namespace):
     def _inner(dir_: Path):
         calc_results = get_calc_results(dir_, False)
         band_edge_states: BandEdgeStates = loadfn(dir_ / "band_edge_states.json")
+        band_edge_orbital_infos: BandEdgeOrbitalInfos = loadfn(dir_ / "band_edge_orbital_infos.json")
         correction = DephonCorrection.from_yaml(dir_ / "dephon_correction.yaml")
+
+        localized_orbitals, valence_bands, conduction_bands = get_orbs(
+            band_edge_orbital_infos, band_edge_states)
 
         sp_info: SinglePointInfo = loadfn(dir_ / "single_point_info.json")
         sp_info.corrected_energy = calc_results.energy + correction.energy
         sp_info.magnetization = calc_results.magnetization
-        sp_info.localized_orbitals = [s.localized_orbitals for s in band_edge_states.states]
+        sp_info.localized_orbitals = localized_orbitals
+        sp_info.valence_bands = valence_bands
+        sp_info.conduction_bands = conduction_bands
         sp_info.is_shallow = band_edge_states.is_shallow
         sp_info.correction_method = correction.correction_type
         sp_info.to_json_file(dir_ / "single_point_info.json")
@@ -289,10 +301,10 @@ def make_initial_e_p_coupling(args: Namespace):
 
 def update_e_p_coupling(args: Namespace):
     result = EPCoupling.from_dict(json.load(args.e_p_coupling_filename))
-
     for dir_ in args.dirs:
         single_info: SinglePointInfo = loadfn(dir_ / "single_point_info.json")
         wswq = _read_WSWQ(dir_ / "wswq/WSWQ")
         add_inner_products(result, wswq=wswq, dQ=single_info.dQ)
+        print(result)
 
     result.to_json_file(args.e_p_coupling_filename)

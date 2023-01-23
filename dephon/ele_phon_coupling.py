@@ -58,6 +58,7 @@ class EPCoupling(MSONable, ToJsonFileMixIn):
         defect_band_index: The defect band index starting from 1.
     """
     charge: int
+    disp: float
     captured_carrier: Carrier
     volume: float
     ave_captured_carrier_mass: float

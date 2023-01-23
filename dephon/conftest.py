@@ -72,8 +72,6 @@ direct
 0.0 0.0 0.85""", fmt="poscar")
 
 
-
-
 @pytest.fixture
 def dephon_init(ground_structure, excited_structure):
     orb_info = LocalizedOrbital(band_idx=2,
@@ -83,11 +81,13 @@ def dephon_init(ground_structure, excited_structure):
     vb = NearEdgeState(band_index=1,
                        kpt_coord=[0.0]*3,
                        kpt_index=1,
+                       kpt_weight=1.0,
                        eigenvalue=1.0,
                        occupation=1.0)
     cb = NearEdgeState(band_index=2,
                        kpt_coord=[0.0]*3,
                        kpt_index=1,
+                       kpt_weight=1.0,
                        eigenvalue=3.0,
                        occupation=0.0)
     cb_w_lo = copy(cb)

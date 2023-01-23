@@ -18,6 +18,7 @@ from vise.util.logger import get_logger
 from vise.util.matplotlib import float_to_int_formatter
 from vise.util.mix_in import ToJsonFileMixIn
 
+from dephon.dephon_init import NearEdgeState
 from dephon.enum import CorrectionType, Carrier
 
 logger = get_logger(__name__)
@@ -35,12 +36,22 @@ class SinglePointInfo(MSONable, ToJsonFileMixIn):
     corrected_energy: float = None
     magnetization: float = None
     localized_orbitals: List[List[LocalizedOrbital]] = field(default_factory=list)
+    valence_bands: List[List[NearEdgeState]] = field(default_factory=list)  # [spin][bands]
+    conduction_bands: List[List[NearEdgeState]] = field(default_factory=list) # [spin][bands]
     is_shallow: bool = None
     correction_method: CorrectionType = None
     # whether this point is used for the quadratic fitting.
     used_for_fitting: bool = None
     # This needs to be here to make table_for_plot
     base_energy: float = 0.0  # This must be same in the same (Single)Ccd class
+
+    def near_edge_states(self,
+                         capped_carrier: Carrier,
+                         spin: int) -> List[NearEdgeState]:
+        bands = self.conduction_bands \
+            if capped_carrier is Carrier.e else self.valence_bands
+        idx = 0 if len(bands) == 1 else spin
+        return bands[idx]
 
     @property
     def relative_energy(self):
