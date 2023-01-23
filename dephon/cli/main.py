@@ -214,6 +214,8 @@ def parse_args_main(args):
 
     parser_update_e_p_coupling.add_argument(
         "--e_p_coupling_filename", type=Path, default="dephon_init.json")
+    parser_update_e_p_coupling.add_argument(
+        "--dirs", type=Path, nargs="+", default=[])
 
     parser_update_e_p_coupling.set_defaults(func=make_wswq_dirs)
     # ------------------------------------------------------------------------

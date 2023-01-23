@@ -66,14 +66,14 @@ class MakeInitialEPCoupling:
                 for loc_orb in los_by_spin:
                     if self.captured_carrier.is_occupied(loc_orb.occupation):
                         continue
-
                     result = self._matrix_elements(loc_orb, spin)
 
         return result
 
     def _matrix_elements(self, lo, spin):
         result = []
-        near_edge_states = self._min_point.near_edge_states(self.captured_carrier, spin)
+        near_edge_states = \
+            self._min_point.near_edge_states(self.captured_carrier, spin)
         for state in near_edge_states:
             eigenvalue_diff = abs(state.eigenvalue - lo.ave_energy)
             result.append(EPMatrixElement(state.band_index,

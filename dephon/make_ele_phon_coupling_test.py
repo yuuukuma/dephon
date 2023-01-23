@@ -8,14 +8,14 @@ from pymatgen.core import Lattice, Structure
 
 from dephon.config_coord import Ccd, SingleCcd, SinglePointInfo, SingleCcdId
 from dephon.dephon_init import DephonInit, MinimumPointInfo, NearEdgeState
-from dephon.ele_phon_coupling import EPCoupling, InnerProduct
+from dephon.ele_phon_coupling import EPCoupling, InnerProduct, EPMatrixElement
 from dephon.enum import Carrier
 from dephon.make_ele_phon_coupling import MakeInitialEPCoupling, \
     add_inner_products
 
 
 @pytest.fixture
-def dephon_init(mocker):
+def dephon_init():
     lattice = Lattice.cubic(2.0)
     coords = [[0.0, 0.0, 0.0]]
     excited = MinimumPointInfo(charge=0,
@@ -43,11 +43,13 @@ def dephon_init(mocker):
 
 @pytest.fixture
 def ccd():
-    l_orb_1 = LocalizedOrbital(band_idx=102, ave_energy=1001.0, occupation=1.0, orbitals={})
-    l_orb_2 = LocalizedOrbital(band_idx=103, ave_energy=1002.0, occupation=0.0, orbitals={})
+    l_orb_up = LocalizedOrbital(
+        band_idx=102, ave_energy=1001.0, occupation=1.0, orbitals={})
+    l_orb_down = LocalizedOrbital(
+        band_idx=103, ave_energy=1002.0, occupation=0.0, orbitals={})
     single_ccd_1 = SingleCcd(SingleCcdId("excited", carriers=[Carrier.e]),
                              charge=0,
-                             point_infos=[SinglePointInfo(dQ=1.0, disp_ratio=0.0, magnetization=-1.0, localized_orbitals=[[l_orb_1, l_orb_2], []])])
+                             point_infos=[SinglePointInfo(dQ=1.0, disp_ratio=0.0, magnetization=-1.0, localized_orbitals=[[l_orb_up, l_orb_down], []])])
     single_ccd_2 = SingleCcd(SingleCcdId("ground", carriers=[Carrier.e, Carrier.h]),
                              charge=-1,
                              point_infos=[SinglePointInfo(dQ=0.0, disp_ratio=0.0, magnetization=0.0, localized_orbitals=[[], []])])
@@ -55,17 +57,16 @@ def ccd():
 
 
 @pytest.fixture
-def make_e_p_coupling_h(e_p_coupling, dephon_init, ccd):
+def make_e_p_coupling_h(dephon_init, ccd):
     return MakeInitialEPCoupling(dephon_init=dephon_init, ccd=ccd, captured_carrier=Carrier.h)
 
 
 @pytest.fixture
-def make_e_p_coupling_e(e_p_coupling, dephon_init, ccd):
+def make_e_p_coupling_e(dephon_init, ccd):
     return MakeInitialEPCoupling(dephon_init=dephon_init, ccd=ccd, captured_carrier=Carrier.e)
 
 
-def test_make_initial_e_p_coupling_base_charge(
-        make_e_p_coupling_h, e_p_coupling, dephon_init, ccd):
+def test_make_initial_e_p_coupling_base_charge(make_e_p_coupling_h, dephon_init, ccd):
     assert make_e_p_coupling_h.charge == 0
 
     common = dict(dephon_init=dephon_init, ccd=ccd, captured_carrier=Carrier.h)
@@ -77,7 +78,19 @@ def test_make_initial_e_p_coupling_base_charge(
 
 
 def test_make_initial_e_p_coupling(make_e_p_coupling_h):
-    expected = EPCoupling(charge=0, captured_carrier=Carrier.h, volume=8.0, ave_captured_carrier_mass=0.02, ave_static_diele_const=0.03, e_p_matrix_elements=[])
+    e_p_elem = EPMatrixElement(band_edge_index=101,
+                               defect_band_index=102,
+                               spin_idx=0,
+                               eigenvalue_diff=1.0,
+                               kpt_idx=1,
+                               kpt_coord=[0.0]*3)
+    expected = EPCoupling(charge=0,
+                          captured_carrier=Carrier.h,
+                          volume=8.0,
+                          ave_captured_carrier_mass=0.02,
+                          ave_static_diele_const=0.03,
+                          # down does not exist because of hole capture.
+                          e_p_matrix_elements=[e_p_elem])
     assert make_e_p_coupling_h.make() == expected
 
 

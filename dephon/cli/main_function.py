@@ -289,7 +289,6 @@ def make_initial_e_p_coupling(args: Namespace):
 
 def update_e_p_coupling(args: Namespace):
     result = EPCoupling.from_dict(json.load(args.e_p_coupling_filename))
-    print(result)
 
     for dir_ in args.dirs:
         single_info: SinglePointInfo = loadfn(dir_ / "single_point_info.json")
