@@ -12,7 +12,7 @@ from pymatgen.io.vasp.inputs import UnknownPotcarWarning
 from dephon.cli.main_function import make_dephon_init, make_ccd, \
     make_ccd_dirs, plot_ccd, plot_eigenvalues, set_quadratic_fitting_q_range, \
     make_wswq_dirs, update_single_point_infos, make_single_ccd, \
-    make_initial_e_p_coupling
+    make_initial_e_p_coupling, update_e_p_coupling
 from dephon.enum import Carrier
 from dephon.version import __version__
 
@@ -217,7 +217,7 @@ def parse_args_main(args):
     parser_update_e_p_coupling.add_argument(
         "--dirs", type=Path, nargs="+", default=[])
 
-    parser_update_e_p_coupling.set_defaults(func=make_wswq_dirs)
+    parser_update_e_p_coupling.set_defaults(func=update_e_p_coupling)
     # ------------------------------------------------------------------------
     return parser.parse_args(args)
 

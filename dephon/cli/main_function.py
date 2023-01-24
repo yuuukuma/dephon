@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 #  Copyright (c) 2022 Kumagai group.
-import json
 import os
 from argparse import Namespace
 from pathlib import Path
@@ -300,7 +299,7 @@ def make_initial_e_p_coupling(args: Namespace):
 
 
 def update_e_p_coupling(args: Namespace):
-    result = EPCoupling.from_dict(json.load(args.e_p_coupling_filename))
+    result: EPCoupling = loadfn(args.e_p_coupling_filename)
     for dir_ in args.dirs:
         single_info: SinglePointInfo = loadfn(dir_ / "single_point_info.json")
         wswq = _read_WSWQ(dir_ / "wswq/WSWQ")
