@@ -44,13 +44,13 @@ def test_single_point_info_corrected_energy(single_point_min_info,
 def test_image_structure_str(single_point_min_info,
                              single_point_max_info):
     actual = single_point_min_info.__str__()
-    expected = """   dQ    disp ratio  corr. energy    relative energy    used for fitting?    is shallow?
+    expected = """   dQ    disp ratio  corr. energy    relative energy    used for fitting?    is shallow?    localized orb
 1.000         0.100"""
     assert actual == expected
 
     actual = single_point_max_info.__str__()
-    expected = """   dQ    disp ratio    corr. energy    relative energy  used for fitting?    is shallow?
-1.000         0.100           5.000              4.000  True                 True"""
+    expected = """   dQ    disp ratio    corr. energy    relative energy  used for fitting?    is shallow?    localized orb
+1.000         0.100           5.000              4.000  True                 True           down-2(1.0)"""
     assert actual == expected
 
 
@@ -143,7 +143,7 @@ def test_single_ccd_str(single_ccd):
 charge: 0
 omega: 0.098
 carriers: h e
-   dQ    disp ratio    corr. energy    relative energy  used for fitting?    is shallow?
+   dQ    disp ratio    corr. energy    relative energy  used for fitting?    is shallow?    localized orb
 0.000         0.000           3.400              0.000  True                 False
 1.000         0.500           2.200             -1.200  True                 False
 2.000         1.000           3.300             -0.100  True                 False
@@ -189,14 +189,13 @@ def test_ccd_initial_and_final_ccd_from_captured_carrier(ccd, single_ccd, excite
 
 def test_ccd_str(ccd):
     actual = ccd.__str__()
-    print(actual)
     expected = """name: Va_O1
 --------------------------------------------------
 name: from_0_to_1
 charge: 0
 omega: 0.098
 carriers: h e
-   dQ    disp ratio    corr. energy    relative energy  used for fitting?    is shallow?
+   dQ    disp ratio    corr. energy    relative energy  used for fitting?    is shallow?    localized orb
 0.000         0.000           3.400              3.400  True                 False
 1.000         0.500           2.200              2.200  True                 False
 2.000         1.000           3.300              3.300  True                 False
@@ -206,7 +205,7 @@ name: from_1_to_0
 charge: 1
 omega: N.A.
 carriers: e
-   dQ    disp ratio    corr. energy    relative energy  used for fitting?    is shallow?
+   dQ    disp ratio    corr. energy    relative energy  used for fitting?    is shallow?    localized orb
 1.000         0.800          10.300             10.300                       False
 2.000         0.900          10.200             10.200                       False
 3.000         1.000          10.100             10.100                       False"""

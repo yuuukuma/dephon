@@ -3,16 +3,13 @@
 from vise.tests.helpers.assertion import assert_json_roundtrip
 
 
-
 def test_e_p_coupling_to_json_file(e_p_coupling, tmpdir):
     assert_json_roundtrip(e_p_coupling, tmpdir)
 
 
 def test_reset_inner_products(e_p_coupling):
     e_p_coupling.reset_inner_prod()
-    actual = e_p_coupling.e_p_matrix_elements[1][0].inner_products
-    expected = []
-    assert actual == expected
+    assert e_p_coupling.e_p_matrix_elements == []
 
 
 # def test_make_initial_e_p_coupling(dephon_init, ccd):

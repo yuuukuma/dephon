@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 #  Copyright (c) 2022 Kumagai group.
-from collections import defaultdict
 from dataclasses import dataclass
 from pathlib import Path
 from typing import List
@@ -10,14 +9,12 @@ from monty.json import MSONable
 from pydefect.analyzer.band_edge_states import LocalizedOrbital
 from pymatgen.analysis.defects.ccd import get_dQ
 from pymatgen.core import Structure
-from pymatgen.electronic_structure.core import Spin
 from tabulate import tabulate
 from vise.util.logger import get_logger
 from vise.util.mix_in import ToJsonFileMixIn
 from vise.util.structure_symmetrizer import num_sym_op
 
 from dephon.enum import Carrier
-from dephon.util import spin_to_idx
 
 logger = get_logger(__name__)
 
@@ -118,25 +115,6 @@ class MinimumPointInfo(MSONable):
             if captured_carrier is Carrier.e else self.valence_bands
         idx = 0 if len(bands) == 1 else spin
         return bands[idx]
-
-    @property
-    def relevant_band_indices(self):
-        result = defaultdict(list)
-        for spin in [Spin.up, Spin.down]:
-            s_idx = spin_to_idx(spin, count_from_1=True)
-            kpt_indices = []
-            if self.valence_bands:
-                for state in self.valence_bands[spin_to_idx(spin)]:
-                    result[(s_idx, state.kpt_index)].append(state.band_index)
-                    kpt_indices.append(state.kpt_index)
-            for state in self.conduction_bands[spin_to_idx(spin)]:
-                result[(s_idx, state.kpt_index)].append(state.band_index)
-                kpt_indices.append(state.kpt_index)
-            for lo in self.localized_orbitals[spin_to_idx(spin)]:
-                for kpt_index in kpt_indices:
-                    if lo.band_idx not in result[(s_idx, kpt_index)]:
-                        result[(s_idx, kpt_index)].append(lo.band_idx)
-        return dict(result)
 
 
 def make_near_edge_states_from_band_edge_orbital_infos():

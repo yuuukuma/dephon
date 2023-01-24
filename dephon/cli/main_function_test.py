@@ -34,6 +34,7 @@ def test_make_dephon_init(test_files, tmpdir):
                      effective_mass=loadfn(dir_ / "effective_mass.json"))
     make_dephon_init(args)
     actual = loadfn("cc/Va_O1_1_0/dephon_init.json").__str__()
+    print(actual)
     expected = """name: Va_O1
 vbm                  1.740  supercell vbm  1.615
 cbm                  4.705  supercell cbm  4.965

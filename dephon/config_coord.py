@@ -35,9 +35,11 @@ class SinglePointInfo(MSONable, ToJsonFileMixIn):
     # energy obtained directly from DFT calculations
     corrected_energy: float = None
     magnetization: float = None
-    localized_orbitals: List[List[LocalizedOrbital]] = field(default_factory=list)
-    valence_bands: List[List[NearEdgeState]] = field(default_factory=list)  # [spin][bands]
-    conduction_bands: List[List[NearEdgeState]] = field(default_factory=list) # [spin][bands]
+    # [spin][bands]
+    localized_orbitals: List[List[LocalizedOrbital]] \
+        = field(default_factory=list)
+    valence_bands: List[List[NearEdgeState]] = field(default_factory=list)
+    conduction_bands: List[List[NearEdgeState]] = field(default_factory=list)
     is_shallow: bool = None
     correction_method: CorrectionType = None
     # whether this point is used for the quadratic fitting.
@@ -61,16 +63,22 @@ class SinglePointInfo(MSONable, ToJsonFileMixIn):
 
     @property
     def table_for_plot(self):
-        localized_state_idxs = []
-        for s, spin in zip(self.localized_orbitals, ["up", "down"]):
-            for ss in s:
-                localized_state_idxs.append(f"{spin}-{ss.band_idx}({ss.occupation:.1f})")
+        lo_str = []
+        for lo_by_spin, spin in zip(self.localized_orbitals, ["up", "down"]):
+            for lo_by_band in lo_by_spin:
+                occupation = f"{lo_by_band.occupation:.1f}"
+                lo_str.append(f"{spin}-{lo_by_band.band_idx}({occupation})")
 
-        result = [self.dQ, self.disp_ratio, self.corrected_energy,
-                  self.relative_energy, self.used_for_fitting, self.is_shallow,
-                  ", ".join(localized_state_idxs)]
+        joined_local_orbitals = ", ".join(lo_str)
+
+        result = [self.dQ,
+                  self.disp_ratio,
+                  self.corrected_energy,
+                  self.relative_energy,
+                  self.used_for_fitting,
+                  self.is_shallow,
+                  joined_local_orbitals]
         return result
-#        return ["-" if x is None else x for x in result]
 
     def __str__(self):
         return tabulate([self.table_for_plot], tablefmt="plain", floatfmt=".3f",

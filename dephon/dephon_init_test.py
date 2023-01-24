@@ -73,11 +73,6 @@ def test_minimum_point_info_near_edge_states(minimum_point_info):
     assert actual == [vb_nes]
 
 
-def test_minimum_point_info_relevant_band_indices(minimum_point_info):
-    expected = {(1, 1): [1, 2], (2, 1): [1, 3, 2]}
-    assert minimum_point_info.relevant_band_indices == expected
-
-
 def test_dephon_init_dQ(dephon_init):
     expected = sqrt((0.1*10)**2*6 * Element.H.atomic_mass)
     assert dephon_init.dQ == pytest.approx(expected)
@@ -108,20 +103,26 @@ static diele        13.000
   q   ini symm     final symm    energy    correction    corrected energy    magnetization   localized state idx      ZPL
   0     2mm                 2    11.000        -1.000              10.000            0.000
   1     2mm                 2    12.000        -1.000              11.000            1.000         down-2          -1.000
-  q=0, spin-up  valence bands:
+- q=0
+-- valence bands, spin-up
 band index: 1, kpt info: (index : 1, coord: 0.00 0.00 0.00, weight: 1.0), eigenvalue: 1.00, occupation: 1.00
-q=0, spin-down  valence bands:
+-- valence bands, spin-down
 band index: 1, kpt info: (index : 1, coord: 0.00 0.00 0.00, weight: 1.0), eigenvalue: 1.00, occupation: 1.00
-q=0, spin-up  conduction bands:
+
+-- conduction bands, spin-up
 band index: 2, kpt info: (index : 1, coord: 0.00 0.00 0.00, weight: 1.0), eigenvalue: 3.00, occupation: 0.00
-q=0, spin-down  conduction bands:
+-- conduction bands, spin-down
 band index: 2, kpt info: (index : 1, coord: 0.00 0.00 0.00, weight: 1.0), eigenvalue: 3.00, occupation: 0.00
-q=1, spin-up  valence bands:
+
+- q=1
+-- valence bands, spin-up
 band index: 1, kpt info: (index : 1, coord: 0.00 0.00 0.00, weight: 1.0), eigenvalue: 1.00, occupation: 1.00
-q=1, spin-down  valence bands:
+-- valence bands, spin-down
 band index: 1, kpt info: (index : 1, coord: 0.00 0.00 0.00, weight: 1.0), eigenvalue: 1.00, occupation: 1.00
-q=1, spin-up  conduction bands:
+
+-- conduction bands, spin-up
 band index: 2, kpt info: (index : 1, coord: 0.00 0.00 0.00, weight: 1.0), eigenvalue: 3.00, occupation: 0.00
-q=1, spin-down  conduction bands:
-band index: 3, kpt info: (index : 1, coord: 0.00 0.00 0.00, weight: 1.0), eigenvalue: 3.00, occupation: 0.00"""
+-- conduction bands, spin-down
+band index: 3, kpt info: (index : 1, coord: 0.00 0.00 0.00, weight: 1.0), eigenvalue: 3.00, occupation: 0.00
+"""
     assert actual == expected

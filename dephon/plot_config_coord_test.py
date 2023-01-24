@@ -4,16 +4,15 @@
 import pytest
 
 from dephon.config_coord import Ccd, SinglePointInfo, CcdPlotter, \
-    SingleCcd
+    SingleCcd, SingleCcdId
 from dephon.enum import Carrier
 
 
 @pytest.fixture
 def single_ccd():
     return SingleCcd(
-        name="from_0_to_1",
+        id_=SingleCcdId("from_0_to_1", carriers=[Carrier.h, Carrier.e]),
         charge=0,
-        carriers=[Carrier.h, Carrier.e],
         point_infos=[
             SinglePointInfo(2., 1.0, 3.3, False, used_for_fitting=True),
             SinglePointInfo(1., 0.5, 2.2, False, used_for_fitting=True),
@@ -24,7 +23,7 @@ def single_ccd():
 @pytest.fixture
 def ccd(single_ccd):
     excited_state = SingleCcd(
-        name="from_1_to_0",
+        id_=SingleCcdId("from_1_to_0", carriers=[Carrier.h]),
         charge=1,
         point_infos=[SinglePointInfo(3., 1.0, 10.1, False),
                      SinglePointInfo(2., 0.9, 10.2, False),

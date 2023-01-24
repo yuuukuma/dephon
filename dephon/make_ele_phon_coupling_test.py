@@ -85,6 +85,7 @@ def test_make_initial_e_p_coupling(make_e_p_coupling_h):
                                kpt_idx=1,
                                kpt_coord=[0.0]*3)
     expected = EPCoupling(charge=0,
+                          disp=0.0,
                           captured_carrier=Carrier.h,
                           volume=8.0,
                           ave_captured_carrier_mass=0.02,

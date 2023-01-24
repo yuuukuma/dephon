@@ -159,6 +159,7 @@ def e_p_coupling():
 
     return EPCoupling(
         charge=1,
+        disp=0.0,
         captured_carrier=Carrier.e,
         volume=100.0,
         ave_captured_carrier_mass=1.0,

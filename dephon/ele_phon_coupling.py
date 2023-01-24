@@ -66,6 +66,9 @@ class EPCoupling(MSONable, ToJsonFileMixIn):
     # int is band_edge_index.
     e_p_matrix_elements: List[EPMatrixElement] = None
 
+    def reset_inner_prod(self):
+        self.e_p_matrix_elements = []
+
     # def set_inner_prod(self,
     #                    d: Dict[, Dict[int, List[InnerProduct]]]):
     #     for k, v in d.items():
