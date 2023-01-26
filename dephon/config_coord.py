@@ -133,6 +133,10 @@ class SingleCcd(MSONable, ToJsonFileMixIn):
             if i.corrected_energy:
                 i.corrected_energy += energy
 
+    @property
+    def ground_point_info(self) -> SinglePointInfo:
+        return self.disp_point_info(disp=0.0)
+
     def disp_point_info(self, disp) -> SinglePointInfo:
         for point_info in self.point_infos:
             if isclose(point_info.disp_ratio, disp):

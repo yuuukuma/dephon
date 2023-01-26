@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
 #  Copyright (c) 2022 Kumagai group.
 from dataclasses import dataclass
-from typing import Union, List
+from typing import List
 
 import numpy as np
 from nonrad import get_C
 
-from dephon.config_coord import Ccd
+from dephon.config_coord import Ccd, SingleCcd
 from dephon.dephon_init import DephonInit
 from dephon.ele_phon_coupling import EPCoupling
 
@@ -14,9 +14,10 @@ from dephon.ele_phon_coupling import EPCoupling
 @dataclass
 class CaptureRate:
     Wif: float
-    phonon_overlap: float
-    degeneracy: int
+    phonon_overlap: List[float]
+    degeneracy: float
     volume: float
+    temperatures: List[float]
 
     @property
     def capture_rate(self):
@@ -24,26 +25,36 @@ class CaptureRate:
                 * self.phonon_overlap)
 
 
-def make_capture_rate(ccd_init: DephonInit,
+def make_capture_rate(dephon_init: DephonInit,
                       ccd: Ccd,
-                      ground_name: str,
-                      excited_name: str,
-                      ep_coupling: EPCoupling,
-                      T: List[float]):
-    return get_C(dQ=ccd_init.dQ,
-                 dE=ccd_init.dE,
-                 wi=ccd.omega(ground_name),
-                 wf=ccd.omega(excited_name),
-                 Wif=ep_coupling.averaged_wif,
-                 volume=ep_coupling.volume,
-                 g=ccd_init.multiplicity_by_symmetry_reduction,
-                 T=np.array(T))
+                      e_p_coupling: EPCoupling,
+                      temperatures: List[float]):
+    carrier = e_p_coupling.captured_carrier
+    i_ccd, f_ccd = ccd.initial_and_final_ccd_from_captured_carrier(carrier)
+    i_min_info = dephon_init.min_info_from_charge(i_ccd.charge)
+    f_min_info = dephon_init.min_info_from_charge(f_ccd.charge)
+    i_deg = i_min_info.degeneracy_by_symmetry_reduction
+    f_deg = f_min_info.degeneracy_by_symmetry_reduction
+
+    return CaptureRate(e_p_coupling.wif,
+                       calc_phonon_overlaps(i_ccd, f_ccd, temperatures),
+                       f_deg / i_deg,
+                       e_p_coupling.volume,
+                       temperatures)
 
 
-def get_R(dQ: float,
-          dE: float,
-          wi: float,
-          wf: float,
-          T: Union[float, np.ndarray],
-          occ_tol=1e-4):
-    return get_C(dQ, dE, wi, wf, Wif=1.0, volume=1.0, g=1, T=T, occ_tol=occ_tol)
+def calc_phonon_overlaps(ground_ccd: SingleCcd,
+                         excited_ccd: SingleCcd,
+                         T: List[float]):
+    result = get_C(dQ=abs(excited_ccd.ground_point_info.dQ
+                          - ground_ccd.ground_point_info.dQ),
+                   dE=(excited_ccd.ground_point_info.corrected_energy
+                       - ground_ccd.ground_point_info.corrected_energy),
+                   wi=ground_ccd.omega(),
+                   wf=excited_ccd.omega(),
+                   Wif=1,
+                   volume=1,
+                   g=1,
+                   T=np.array(T))
+    return list(result)
+

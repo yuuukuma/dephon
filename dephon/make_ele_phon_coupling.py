@@ -3,6 +3,7 @@
 from typing import Dict, Tuple, Optional
 
 import numpy as np
+from pymatgen.electronic_structure.core import Spin
 from vise.util.logger import get_logger
 
 from dephon.config_coord import Ccd, SingleCcd
@@ -63,7 +64,8 @@ class MakeInitialEPCoupling:
     def _e_p_matrix_elements(self):
         result = []
         if self._ground_point.localized_orbitals:
-            for spin, los_by_spin in enumerate(self._ground_point.localized_orbitals):
+            for los_by_spin, spin in zip(self._ground_point.localized_orbitals,
+                                         [Spin.up, Spin.down]):
                 for loc_orb in los_by_spin:
                     if self.captured_carrier.is_occupied(loc_orb.occupation):
                         continue
