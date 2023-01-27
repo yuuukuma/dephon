@@ -3,6 +3,7 @@
 import os
 from argparse import Namespace
 from pathlib import Path
+from typing import List
 
 import yaml
 from monty.serialization import loadfn
@@ -20,8 +21,9 @@ from vise.input_set.prior_info import PriorInfo
 from vise.util.file_transfer import FileLink
 from vise.util.logger import get_logger
 
+from dephon.capture_rate import calc_phonon_overlaps, CaptureRate
 from dephon.config_coord import SinglePointInfo, CcdPlotter, \
-    SingleCcd, SingleCcdId
+    SingleCcd, SingleCcdId, Ccd
 from dephon.corrections import DephonCorrection
 from dephon.dephon_init import DephonInit, MinimumPointInfo, NearEdgeState
 from dephon.ele_phon_coupling import EPCoupling
@@ -307,3 +309,27 @@ def update_e_p_coupling(args: Namespace):
         print(result)
 
     result.to_json_file(args.e_p_coupling_filename)
+
+
+def make_capture_rate(args: Namespace):
+    dephon_init: DephonInit = args.dephon_init
+    ccd: Ccd = args.ccd
+    e_p_coupling: EPCoupling = args.e_p_coupling
+    temperatures: List[float] = args.temperatures
+
+    carrier = e_p_coupling.captured_carrier
+    i_ccd, f_ccd = ccd.initial_and_final_ccd_from_captured_carrier(carrier)
+    i_min_info = dephon_init.min_info_from_charge(i_ccd.charge)
+    f_min_info = dephon_init.min_info_from_charge(f_ccd.charge)
+    i_deg = i_min_info.degeneracy_by_symmetry_reduction
+    f_deg = f_min_info.degeneracy_by_symmetry_reduction
+
+    phonon_overlaps = calc_phonon_overlaps(i_ccd, f_ccd, temperatures)
+
+    cap_rate = CaptureRate(Wif=e_p_coupling.wif,
+                           phonon_overlaps=phonon_overlaps,
+                           temperatures=temperatures,
+                           degeneracy=f_deg / i_deg,
+                           volume=e_p_coupling.volume)
+    print(cap_rate)
+    cap_rate.to_json_file()

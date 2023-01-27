@@ -4,43 +4,52 @@ from dataclasses import dataclass
 from typing import List
 
 import numpy as np
+from monty.json import MSONable
 from nonrad import get_C
+from tabulate import tabulate
+from vise.util.mix_in import ToJsonFileMixIn
 
-from dephon.config_coord import Ccd, SingleCcd
-from dephon.dephon_init import DephonInit
-from dephon.ele_phon_coupling import EPCoupling
+from dephon.config_coord import SingleCcd
 
 
 @dataclass
-class CaptureRate:
+class CaptureRate(MSONable, ToJsonFileMixIn):
     Wif: float
-    phonon_overlap: List[float]
+    phonon_overlaps: List[float]  # as a function of temperature
+    temperatures: List[float]
     degeneracy: float
     volume: float
-    temperatures: List[float]
 
     @property
-    def capture_rate(self):
-        return (2 * np.pi * self.degeneracy * self.Wif**2 * self.volume
-                * self.phonon_overlap)
+    def capture_rate(self) -> np.array:
+        return (2 * np.pi * self.degeneracy * self.Wif ** 2 * self.volume
+                * np.array(self.phonon_overlaps))
 
+    def __str__(self):
+        result = []
+        aaa = [["Wif:", self.Wif],
+               ["degeneracy:", self.degeneracy],
+               ["volume (Å):", self.volume]]
 
-def make_capture_rate(dephon_init: DephonInit,
-                      ccd: Ccd,
-                      e_p_coupling: EPCoupling,
-                      temperatures: List[float]):
-    carrier = e_p_coupling.captured_carrier
-    i_ccd, f_ccd = ccd.initial_and_final_ccd_from_captured_carrier(carrier)
-    i_min_info = dephon_init.min_info_from_charge(i_ccd.charge)
-    f_min_info = dephon_init.min_info_from_charge(f_ccd.charge)
-    i_deg = i_min_info.degeneracy_by_symmetry_reduction
-    f_deg = f_min_info.degeneracy_by_symmetry_reduction
+        result.append(tabulate(aaa, tablefmt="plain", floatfmt=".3f"))
+        result.append("phonon overlap:")
 
-    return CaptureRate(e_p_coupling.wif,
-                       calc_phonon_overlaps(i_ccd, f_ccd, temperatures),
-                       f_deg / i_deg,
-                       e_p_coupling.volume,
-                       temperatures)
+        phonon_overlaps = []
+        for omega, T in zip(self.phonon_overlaps, self.temperatures):
+            phonon_overlaps.append([T, omega])
+        result.append(tabulate(phonon_overlaps,
+                               headers=["K", "THz"],
+                               tablefmt="plain", floatfmt=".3f"))
+        result.append("-" * 50)
+        result.append(f"capture rate:")
+
+        cap_rates = []
+        for rate, T in zip(self.capture_rate, self.temperatures):
+            cap_rates.append([T, rate])
+        result.append(tabulate(phonon_overlaps,
+                               headers=["K", "XXX"],
+                               tablefmt="plain", floatfmt=".3f"))
+        return "\n".join(result)
 
 
 def calc_phonon_overlaps(ground_ccd: SingleCcd,

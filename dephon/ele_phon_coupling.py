@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 #  Copyright (c) 2022 Kumagai group.
 from dataclasses import dataclass, field
-from typing import List
+from typing import List, Union
 
 import numpy as np
 from monty.json import MSONable
@@ -47,12 +47,21 @@ class EPMatrixElement(MSONable):
     """
     band_edge_index: int
     defect_band_index: int
-    spin: Spin
+    spin: Union[Spin, str]
     eigenvalue_diff: float
     kpt_idx: int
     # Currently, symmetry is assumed not to be changed depending on dQ.
     kpt_coord: List[float]
     inner_products: List[InnerProduct] = field(default_factory=list)
+
+    def __post_init__(self):
+        if isinstance(self.spin, str):
+            self.spin = Spin[self.spin]
+
+    def as_dict(self) -> dict:
+        result = super().as_dict()
+        result["spin"] = result["spin"].name
+        return result
 
     @property
     def dQs(self):

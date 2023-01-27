@@ -12,7 +12,7 @@ from pymatgen.io.vasp.inputs import UnknownPotcarWarning
 from dephon.cli.main_function import make_dephon_init, make_ccd, \
     make_ccd_dirs, plot_ccd, plot_eigenvalues, set_quadratic_fitting_q_range, \
     make_wswq_dirs, update_single_point_infos, make_single_ccd, \
-    make_initial_e_p_coupling, update_e_p_coupling
+    make_initial_e_p_coupling, update_e_p_coupling, make_capture_rate
 from dephon.enum import Carrier
 from dephon.version import __version__
 
@@ -218,6 +218,21 @@ def parse_args_main(args):
         "--dirs", type=Path, nargs="+", default=[])
 
     parser_update_e_p_coupling.set_defaults(func=update_e_p_coupling)
+
+    # -- make_capture_rate -----------------------------------
+    parser_make_capture_rate = subparsers.add_parser(
+        name="make_capture_rate",
+        description="Make directories for calculating WSWQ files.",
+        parents=[dephon_init, ccd],
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+        aliases=['mcr'])
+
+    parser_make_capture_rate.add_argument(
+        "--e_p_coupling", type=loadfn, required=True)
+    parser_make_capture_rate.add_argument(
+        "-t", "--temperatures", type=float, nargs="+")
+
+    parser_make_capture_rate.set_defaults(func=make_capture_rate)
     # ------------------------------------------------------------------------
     return parser.parse_args(args)
 

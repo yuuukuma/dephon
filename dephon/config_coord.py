@@ -12,6 +12,7 @@ from matplotlib.axes import Axes
 from monty.json import MSONable
 from nonrad.ccd import get_omega_from_PES
 from pydefect.analyzer.band_edge_states import LocalizedOrbital
+from pymatgen.electronic_structure.core import Spin
 from scipy import interpolate
 from tabulate import tabulate
 from vise.util.logger import get_logger
@@ -20,6 +21,7 @@ from vise.util.mix_in import ToJsonFileMixIn
 
 from dephon.dephon_init import NearEdgeState
 from dephon.enum import CorrectionType, Carrier
+from dephon.util import spin_to_idx
 
 logger = get_logger(__name__)
 
@@ -49,10 +51,10 @@ class SinglePointInfo(MSONable, ToJsonFileMixIn):
 
     def near_edge_states(self,
                          capped_carrier: Carrier,
-                         spin: int) -> List[NearEdgeState]:
+                         spin: Spin) -> List[NearEdgeState]:
         bands = self.conduction_bands \
             if capped_carrier is Carrier.e else self.valence_bands
-        idx = 0 if len(bands) == 1 else spin
+        idx = 0 if len(bands) == 1 else spin_to_idx(spin)
         return bands[idx]
 
     @property

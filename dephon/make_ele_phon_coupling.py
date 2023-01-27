@@ -73,7 +73,7 @@ class MakeInitialEPCoupling:
 
         return result
 
-    def _matrix_elements(self, lo, spin):
+    def _matrix_elements(self, lo, spin: Spin):
         result = []
         near_edge_states = self._ground_point.near_edge_states(self.captured_carrier, spin)
         for state in near_edge_states:
