@@ -1,23 +1,17 @@
 # -*- coding: utf-8 -*-
 #  Copyright (c) 2022 Kumagai group.
 from dataclasses import dataclass, field
-from typing import List, Union
+from typing import List, Union, Dict, Optional
 
 import numpy as np
 from monty.json import MSONable
+from numpy.linalg import LinAlgError
 from pymatgen.electronic_structure.core import Spin
 from tabulate import tabulate
 from vise.util.mix_in import ToJsonFileMixIn
 
 from dephon.enum import Carrier
-
-
-@dataclass
-class Wif:
-    value: float
-    band_edge_index: int
-    defect_band_index: int
-    spin: Spin
+from dephon.util import spin_to_idx
 
 
 @dataclass
@@ -25,12 +19,10 @@ class InnerProduct(MSONable):
     """
     Attributes:
         inner_products: \bra_{psi_i(0)} | S(0) |\ket_{psi_f(Q)}
-        dQ:
         used_for_fitting:
     """
     inner_product: float
-    dQ: float
-    used_for_fitting: bool = None
+    used_for_fitting: bool = True
 
 
 @dataclass
@@ -52,11 +44,14 @@ class EPMatrixElement(MSONable):
     kpt_idx: int
     # Currently, symmetry is assumed not to be changed depending on dQ.
     kpt_coord: List[float]
-    inner_products: List[InnerProduct] = field(default_factory=list)
+    # key dQ:
+    inner_products: Dict[float, InnerProduct] = field(default_factory=dict)
 
     def __post_init__(self):
         if isinstance(self.spin, str):
             self.spin = Spin[self.spin]
+        self.inner_products = \
+            {float(k): v for k, v in self.inner_products.items()}
 
     def as_dict(self) -> dict:
         result = super().as_dict()
@@ -64,29 +59,57 @@ class EPMatrixElement(MSONable):
         return result
 
     @property
+    def spin_idx(self):
+        return spin_to_idx(self.spin)
+
+    @property
     def dQs(self):
-        return [ip.dQ for ip in self.inner_products]
+        return [dQ for dQ in self.inner_products.keys()]
 
     @property
     def inner_prods(self):
-        return [ip.inner_product for ip in self.inner_products]
+        return [ip.inner_product for ip in self.inner_products.values()]
 
     @property
     def _inner_prod_vs_q(self):
         return self.dQs, self.inner_prods
 
-    def e_p_matrix_element(self, ax=None) -> float:
+    def e_p_matrix_element(self, ax=None) -> Optional[float]:
         """ Evaluated by computing the slope of inner products"""
-        grad, const = np.polyfit(self.dQs, self.inner_prods, 1)
+        try:
+            grad, const = np.polyfit(self.dQs, self.inner_prods, 1)
 
-        if ax:
-            ax.scatter(self.dQs, self.inner_prods)
+            if ax:
+                ax.scatter(self.dQs, self.inner_prods)
 
-            x = np.arange(min(self.dQs), max(self.dQs), 0.01)
-            y = x * grad + const
-            ax.plot(x, y, alpha=0.5)
+                x = np.arange(min(self.dQs), max(self.dQs), 0.01)
+                y = x * grad + const
+                ax.plot(x, y, alpha=0.5)
 
-        return grad
+            return grad
+        except (TypeError, LinAlgError):
+            return None
+
+    def __str__(self):
+        result = []
+        table = [["band edge index", self.band_edge_index],
+                 ["defect band index", self.defect_band_index],
+                 ["spin", self.spin.name],
+                 ["eigenvalue difference", round(self.eigenvalue_diff, 3)],
+                 ["kpoint coord", self.kpt_coord],
+                 ["e-p matrix element", self.e_p_matrix_element()]]
+        result.append(tabulate(table, tablefmt="plain", floatfmt=".3f"))
+
+        inner_prods = []
+        for dQ, ip in self.inner_products.items():
+            inner_prods.append([dQ, ip.inner_product, ip.used_for_fitting])
+
+        result.append(tabulate(inner_prods,
+                               headers=["dQ", "inner product",
+                                        "used for fitting?"],
+                               tablefmt="plain", floatfmt=".3f"))
+
+        return "\n".join(result)
 
 
 @dataclass
@@ -110,37 +133,23 @@ class EPCoupling(MSONable, ToJsonFileMixIn):
 
     def __str__(self):
         result = []
+        mass = round(self.ave_captured_carrier_mass, 2)
+        diele_const = round(self.ave_static_diele_const, 2)
         table = [["charge", self.charge],
-                 ["disp", self.disp],
+                 ["base disp", self.disp],
                  ["captured carrier", self.captured_carrier],
-                 ["volume", self.volume],
-                 ["averaged carrier mass", self.ave_captured_carrier_mass],
-                 ["averaged static dielectric constant",
-                  self.ave_static_diele_const]]
+                 ["volume", round(self.volume, 2)],
+                 ["averaged carrier mass", mass],
+                 ["averaged static dielectric constant", diele_const]]
         result.append(tabulate(table, tablefmt="plain", floatfmt=".3f"))
 
         if self.e_p_matrix_elements is None:
             return "\n".join(result)
 
-        result.append("-" * 60)
-        header = ["band edge index",
-                  "defect band index",
-                  "spin",
-                  "eigenvalue difference",
-                  "kpoint coord",
-                  "e-p matrix element"]
-
-        e_p_table = []
         for ep_elem in self.e_p_matrix_elements:
-            e_p_table.append([ep_elem.band_edge_index,
-                              ep_elem.defect_band_index,
-                              ep_elem.spin.name,
-                              ep_elem.eigenvalue_diff,
-                              ep_elem.kpt_coord,
-                              ep_elem.e_p_matrix_element()])
-        result.append(tabulate(e_p_table,
-                               headers=header,
-                               tablefmt="plain", floatfmt=".3f"))
+            result.append("-" * 50)
+            result.append(ep_elem.__str__())
+
         return "\n".join(result)
 
     @property

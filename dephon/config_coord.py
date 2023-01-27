@@ -55,6 +55,7 @@ class SinglePointInfo(MSONable, ToJsonFileMixIn):
         bands = self.conduction_bands \
             if capped_carrier is Carrier.e else self.valence_bands
         idx = 0 if len(bands) == 1 else spin_to_idx(spin)
+        print("a"*10, capped_carrier, spin, idx, bands)
         return bands[idx]
 
     @property

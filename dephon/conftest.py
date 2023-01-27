@@ -73,24 +73,26 @@ direct
 0.0 0.0 0.85""", fmt="poscar")
 
 
+vb = NearEdgeState(band_index=1,
+                   kpt_coord=[0.0]*3,
+                   kpt_index=1,
+                   kpt_weight=1.0,
+                   eigenvalue=1.0,
+                   occupation=1.0)
+cb = NearEdgeState(band_index=2,
+                   kpt_coord=[0.0]*3,
+                   kpt_index=1,
+                   kpt_weight=1.0,
+                   eigenvalue=3.0,
+                   occupation=0.0)
+
+
 @pytest.fixture
 def dephon_init(ground_structure, excited_structure):
     orb_info = LocalizedOrbital(band_idx=2,
                                 ave_energy=2.0,
                                 occupation=1.0,
                                 orbitals={"O": [0.0, 1.0, 0.0]})
-    vb = NearEdgeState(band_index=1,
-                       kpt_coord=[0.0]*3,
-                       kpt_index=1,
-                       kpt_weight=1.0,
-                       eigenvalue=1.0,
-                       occupation=1.0)
-    cb = NearEdgeState(band_index=2,
-                       kpt_coord=[0.0]*3,
-                       kpt_index=1,
-                       kpt_weight=1.0,
-                       eigenvalue=3.0,
-                       occupation=0.0)
     cb_w_lo = copy(cb)
     cb_w_lo.band_index = 3
 
@@ -129,11 +131,11 @@ def ccd(excited_structure, ground_structure, intermediate_structure):
                ccds=[
                    SingleCcd(SingleCcdId(name="excited"), charge=0,
                              point_infos=[SinglePointInfo(-1.0, -0.1, 2.1, False, used_for_fitting=True),
-                                          SinglePointInfo(0.0, 0.0, 1.1, False, used_for_fitting=True),
+                                          SinglePointInfo(0.0, 0.0, 1.1, False, used_for_fitting=True, conduction_bands=[[cb]], valence_bands=[[vb]]),
                                           SinglePointInfo(1.0, 0.1, 2.2, False, used_for_fitting=True)]),
                    SingleCcd(SingleCcdId(name="ground"), charge=1,
                              point_infos=[SinglePointInfo(-1.0, -0.1, 1.1, False, used_for_fitting=False),
-                                          SinglePointInfo(0.0, 0.0, 0.1, False, used_for_fitting=True),
+                                          SinglePointInfo(0.0, 0.0, 0.1, False, used_for_fitting=True, conduction_bands=[[cb]], valence_bands=[[vb]]),
                                           SinglePointInfo(1.0, 0.1, 1.2, False, used_for_fitting=True)])])
 
 
@@ -146,9 +148,9 @@ def sc_structure():
 
 @pytest.fixture
 def e_p_matrix_elem():
-    ip_1 = InnerProduct(inner_product=20.0, dQ=-1.0, used_for_fitting=False)
-    ip_2 = InnerProduct(inner_product=1.0, dQ=0.0, used_for_fitting=True)
-    ip_3 = InnerProduct(inner_product=2.0, dQ=1.0, used_for_fitting=True)
+    ip_1 = InnerProduct(inner_product=20.0, used_for_fitting=False)
+    ip_2 = InnerProduct(inner_product=1.0, used_for_fitting=True)
+    ip_3 = InnerProduct(inner_product=2.0, used_for_fitting=True)
 
     return EPMatrixElement(band_edge_index=1,
                            defect_band_index=2,
@@ -156,7 +158,7 @@ def e_p_matrix_elem():
                            eigenvalue_diff=0.1,
                            kpt_idx=1,
                            kpt_coord=[0.0, 0.0, 0.0],
-                           inner_products=[ip_1, ip_2, ip_3])
+                           inner_products={-1.0: ip_1, 0.0: ip_2, 1.0: ip_3})
 
 
 @pytest.fixture

@@ -16,17 +16,30 @@ def test_reset_inner_products(e_p_coupling):
     assert e_p_coupling.e_p_matrix_elements == []
 
 
+inner_prod_1 = InnerProduct(inner_product=0.2)
+inner_prod_2 = InnerProduct(inner_product=1.2)
+
+
 def test_inner_prod_vs_q(e_p_matrix_elem):
-    inner_prod_1 = InnerProduct(inner_product=0.2, dQ=0.0)
-    inner_prod_2 = InnerProduct(inner_product=1.2, dQ=1.0)
-    e_p_matrix_elem.inner_products = [inner_prod_1, inner_prod_2]
+    e_p_matrix_elem.inner_products = {0.0: inner_prod_1, 1.0: inner_prod_2}
     assert e_p_matrix_elem._inner_prod_vs_q == ([0.0, 1.0], [0.2, 1.2])
 
 
+def test_e_p_matrix_elem_str(e_p_matrix_elem):
+    e_p_matrix_elem.inner_products = {0.0: inner_prod_1, 1.0: inner_prod_2}
+    print(e_p_matrix_elem)
+
+
+def test_e_p_matrix_element_less_inner_prod(e_p_matrix_elem):
+    e_p_matrix_elem.inner_products = {}
+    assert e_p_matrix_elem.e_p_matrix_element() is None
+
+    e_p_matrix_elem.inner_products = {0.0: inner_prod_1}
+    assert e_p_matrix_elem.e_p_matrix_element() is None
+
+
 def test_e_p_matrix_element(e_p_matrix_elem):
-    inner_prod_1 = InnerProduct(inner_product=0.2, dQ=0.0)
-    inner_prod_2 = InnerProduct(inner_product=1.2, dQ=1.0)
-    e_p_matrix_elem.inner_products = [inner_prod_1, inner_prod_2]
+    e_p_matrix_elem.inner_products = {0.0: inner_prod_1, 1.0: inner_prod_2}
     ax = plt.gca()
     assert_almost_equal(e_p_matrix_elem.e_p_matrix_element(ax), 1.0)
     plt.show()

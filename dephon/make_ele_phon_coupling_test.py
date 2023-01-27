@@ -80,7 +80,7 @@ def test_make_initial_e_p_coupling_base_charge(make_e_p_coupling_h, dephon_init,
 def test_make_initial_e_p_coupling(make_e_p_coupling_h):
     e_p_elem = EPMatrixElement(band_edge_index=101,
                                defect_band_index=102,
-                               spin_idx=0,
+                               spin="up",
                                eigenvalue_diff=1.0,
                                kpt_idx=1,
                                kpt_coord=[0.0]*3)

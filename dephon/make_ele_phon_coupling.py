@@ -30,7 +30,7 @@ class MakeInitialEPCoupling:
         self.charge = ccd.charge
         self.disp = disp
         logger.info(f"The base charge and disp are set to {ccd.charge} and {disp}")
-        self._ground_point = ccd.disp_point_info(disp)
+        self._base_single_point = ccd.disp_point_info(disp)
 
     def _single_ccd_for_e_p_coupling(self, charge_for_e_p_coupling
                                      ) -> SingleCcd:
@@ -63,8 +63,8 @@ class MakeInitialEPCoupling:
     @property
     def _e_p_matrix_elements(self):
         result = []
-        if self._ground_point.localized_orbitals:
-            for los_by_spin, spin in zip(self._ground_point.localized_orbitals,
+        if self._base_single_point.localized_orbitals:
+            for los_by_spin, spin in zip(self._base_single_point.localized_orbitals,
                                          [Spin.up, Spin.down]):
                 for loc_orb in los_by_spin:
                     if self.captured_carrier.is_occupied(loc_orb.occupation):
@@ -75,7 +75,10 @@ class MakeInitialEPCoupling:
 
     def _matrix_elements(self, lo, spin: Spin):
         result = []
-        near_edge_states = self._ground_point.near_edge_states(self.captured_carrier, spin)
+        print(self._base_single_point)
+        near_edge_states = \
+            self._base_single_point.near_edge_states(self.captured_carrier, spin)
+
         for state in near_edge_states:
             eigenvalue_diff = abs(state.eigenvalue - lo.ave_energy)
             result.append(EPMatrixElement(state.band_index,
@@ -84,7 +87,6 @@ class MakeInitialEPCoupling:
                                           eigenvalue_diff,
                                           state.kpt_index,
                                           state.kpt_coord))
-
         return result
 
 
@@ -105,6 +107,5 @@ def add_inner_products(e_p_coupling: EPCoupling,
         band_indices = (ep_elem.band_edge_index, ep_elem.defect_band_index)
         braket = np.abs(wswq[spin_kpt_pair][tuple(band_indices)])
         inner_prod = InnerProduct(inner_product=braket,
-                                  dQ=dQ,
                                   used_for_fitting=used_for_fitting)
-        ep_elem.inner_products.append(inner_prod)
+        ep_elem.inner_products[dQ] = inner_prod
