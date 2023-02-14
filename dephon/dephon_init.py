@@ -14,8 +14,6 @@ from vise.util.logger import get_logger
 from vise.util.mix_in import ToJsonFileMixIn
 from vise.util.structure_symmetrizer import num_sym_op
 
-from dephon.enum import Carrier
-
 logger = get_logger(__name__)
 
 
@@ -81,11 +79,11 @@ class MinimumPointInfo(MSONable):
     magnetization: float
     localized_orbitals: List[List[LocalizedOrbital]]
     initial_site_symmetry: str
+    vbm: List[NearEdgeState]  # [spin]
+    cbm: List[NearEdgeState]  # [spin]
     final_site_symmetry: str
     # absolute dir
     parsed_dir: str
-    valence_bands: List[List[NearEdgeState]]  # [spin][bands]
-    conduction_bands: List[List[NearEdgeState]]  # [spin][bands]
 
     # @property
     # def __post_init__(self):
@@ -108,14 +106,6 @@ class MinimumPointInfo(MSONable):
     def dir_path(self):
         return Path(self.parsed_dir)
 
-    def near_edge_states(self,
-                         captured_carrier: Carrier,
-                         spin: int) -> List[NearEdgeState]:
-        bands = self.conduction_bands \
-            if captured_carrier is Carrier.e else self.valence_bands
-        idx = 0 if len(bands) == 1 else spin
-        return bands[idx]
-
 
 def make_near_edge_states_from_band_edge_orbital_infos():
     pass
@@ -135,7 +125,7 @@ class DephonInit(MSONable, ToJsonFileMixIn):
         superell_cbm (float): cbm in the perfect supercell calculation.
     """
     defect_name: str
-    states: List[MinimumPointInfo]
+    min_points: List[MinimumPointInfo]
     vbm: float
     cbm: float
     supercell_vbm: float
@@ -145,31 +135,31 @@ class DephonInit(MSONable, ToJsonFileMixIn):
     ave_static_diele_const: float
 
     def __post_init__(self):
-        assert len(self.states) == 2
+        assert len(self.min_points) == 2
 
     @property
     def band_gap(self):
         return self.cbm - self.vbm
 
     def min_info_from_charge(self, charge: int):
-        for state in self.states:
+        for state in self.min_points:
             if state.charge == charge:
                 return state
         raise ValueError(f"Charge {charge} does not exist.")
 
     @property
     def volume(self):
-        assert (self.states[0].structure.volume
-                == self.states[1].structure.volume)
-        return self.states[0].structure.volume
+        assert (self.min_points[0].structure.volume
+                == self.min_points[1].structure.volume)
+        return self.min_points[0].structure.volume
 
     @property
     def dQ(self):
-        return abs(get_dQ(self.states[0].structure, self.states[1].structure))
+        return abs(get_dQ(self.min_points[0].structure, self.min_points[1].structure))
 
     @property
     def dR(self):
-        return abs(get_dR(self.states[0].structure, self.states[1].structure))
+        return abs(get_dR(self.min_points[0].structure, self.min_points[1].structure))
 
     @property
     def modal_mass(self):
@@ -196,7 +186,7 @@ class DephonInit(MSONable, ToJsonFileMixIn):
 
         last_energy = None
 
-        for state in self.states:
+        for state in self.min_points:
 
             localized_state_idxs = []
             for s, spin in zip(state.localized_orbitals, ["up", "down"]):
@@ -216,15 +206,15 @@ class DephonInit(MSONable, ToJsonFileMixIn):
             tabulate(table, tablefmt="plain", headers=headers, floatfmt=".3f",
                      stralign="center"))
 
-        for min_info in self.states:
+        for min_info in self.min_points:
             result.append(f"- q={min_info.charge}")
-            for vb, spin in zip(min_info.valence_bands, ["up", "down"]):
-                result.append(f"-- valence bands, spin-{spin}")
-                result.extend([f"{x}" for x in vb])
+            for vb, spin in zip(min_info.vbm, ["up", "down"]):
+                result.append(f"-- VBM spin-{spin}")
+                result.append(str(vb))
             result.append(f"")
-            for cb, spin in zip(min_info.conduction_bands, ["up", "down"]):
-                result.append(f"-- conduction bands, spin-{spin}")
-                result.extend([f"{x}" for x in cb])
+            for cb, spin in zip(min_info.cbm, ["up", "down"]):
+                result.append(f"-- CBM spin-{spin}")
+                result.append(str(cb))
             result.append(f"")
 
         return "\n".join(result)

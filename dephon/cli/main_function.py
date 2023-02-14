@@ -90,7 +90,7 @@ def make_min_point_info_from_dir(_dir: Path):
 
 def get_orbs(band_edge_orbital_infos, band_edge_states):
     localized_orbitals, valence_bands, conduction_bands = [], [], []
-    for state, spin in zip(band_edge_states.states, [Spin.up, Spin.down]):
+    for state, spin in zip(band_edge_states.min_points, [Spin.up, Spin.down]):
         localized_orbitals.append(state.localized_orbitals)
         valence_bands.append(make_near_edge_states(band_edge_orbital_infos,
                                                    spin,
@@ -138,14 +138,14 @@ def make_dephon_init(args: Namespace):
 def make_ccd_dirs(args: Namespace):
     os.chdir(args.calc_dir)
     d_init = args.dephon_init
-    s1 = d_init.states[0].structure
-    s2 = d_init.states[1].structure
+    s1 = d_init.min_points[0].structure
+    s2 = d_init.min_points[1].structure
     s1_to_s2 = s1.interpolate(s2, nimages=args.first_to_second_div_ratios)
     s2_to_s1 = s2.interpolate(s1, nimages=args.second_to_first_div_ratios)
-    initial_charges = [d_init.states[0].charge, d_init.states[1].charge]
-    final_charges = [d_init.states[1].charge, d_init.states[0].charge]
-    correction_energies = [d_init.states[0].correction_energy,
-                           d_init.states[1].correction_energy]
+    initial_charges = [d_init.min_points[0].charge, d_init.min_points[1].charge]
+    final_charges = [d_init.min_points[1].charge, d_init.min_points[0].charge]
+    correction_energies = [d_init.min_points[0].correction_energy,
+                           d_init.min_points[1].correction_energy]
 
     for ratios, structures, initial_charge, final_charge, corr in \
             zip([args.first_to_second_div_ratios,

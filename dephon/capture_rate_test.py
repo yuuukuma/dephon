@@ -2,7 +2,7 @@
 #  Copyright (c) 2022 Kumagai group.
 import pytest
 
-from dephon.capture_rate import CaptureRate, make_capture_rate
+from dephon.capture_rate import CaptureRate
 
 
 @pytest.fixture
@@ -17,7 +17,3 @@ def capture_rate():
 def test_capture_rate_str(capture_rate):
     print(capture_rate)
 
-
-def test_make_capture_rate(dephon_init, ccd, e_p_coupling):
-    cap_rate = make_capture_rate(dephon_init, ccd, e_p_coupling, [300])
-    print(cap_rate)

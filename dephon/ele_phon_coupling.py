@@ -98,6 +98,7 @@ class EPMatrixElement(MSONable):
                  ["eigenvalue difference", round(self.eigenvalue_diff, 3)],
                  ["kpoint coord", self.kpt_coord],
                  ["e-p matrix element", self.e_p_matrix_element()]]
+
         result.append(tabulate(table, tablefmt="plain", floatfmt=".3f"))
 
         inner_prods = []

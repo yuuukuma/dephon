@@ -105,8 +105,8 @@ def dephon_init(ground_structure, excited_structure):
                                initial_site_symmetry="2mm",
                                final_site_symmetry="2",
                                parsed_dir="/path/to/Va_O1_0",
-                               valence_bands=[[vb], [vb]],
-                               conduction_bands=[[cb], [cb]])
+                               vbm=[vb, vb],
+                               cbm=[cb, cb])
     va_o1_1 = MinimumPointInfo(charge=1,
                                structure=excited_structure,
                                energy=12.0,
@@ -116,10 +116,10 @@ def dephon_init(ground_structure, excited_structure):
                                initial_site_symmetry="2mm",
                                final_site_symmetry="2",
                                parsed_dir="/path/to/Va_O1_1",
-                               valence_bands=[[vb], [vb]],
-                               conduction_bands=[[cb], [cb_w_lo]])
+                               vbm=[vb, vb],
+                               cbm=[cb, cb_w_lo])
     # transition level = -1.0 from CBM
-    return DephonInit(defect_name="Va_O", states=[va_o1_0, va_o1_1],
+    return DephonInit(defect_name="Va_O", min_points=[va_o1_0, va_o1_1],
                       vbm=1.0, cbm=3.0, supercell_vbm=1.1, supercell_cbm=2.9,
                       ave_electron_mass=11.0, ave_hole_mass=12.0,
                       ave_static_diele_const=13.0)

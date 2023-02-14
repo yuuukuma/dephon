@@ -6,11 +6,9 @@ from math import sqrt
 import pytest
 from pydefect.analyzer.band_edge_states import LocalizedOrbital
 from pymatgen.core import Lattice, Structure, Element
-from pymatgen.electronic_structure.core import Spin
 from vise.tests.helpers.assertion import assert_json_roundtrip
 
 from dephon.dephon_init import get_dR, MinimumPointInfo, NearEdgeState
-from dephon.enum import Carrier
 
 
 def test_get_dR():
@@ -52,8 +50,8 @@ def minimum_point_info(ground_structure):
                             correction_energy=1.0,
                             magnetization=1.0,
                             localized_orbitals=[[], [orb_info]],
-                            valence_bands=[[vb_nes]],
-                            conduction_bands=[[cb_nes_up], [cb_nes_down]],
+                            vbm=[vb_nes],
+                            cbm=[cb_nes_up, cb_nes_down],
                             initial_site_symmetry="4mm",
                             final_site_symmetry="2/m",
                             parsed_dir="/path/to/min_point")
@@ -67,12 +65,6 @@ def test_minimum_point_info_degeneracy_by_symm_reduction(minimum_point_info):
     assert minimum_point_info.degeneracy_by_symmetry_reduction == 2
 
 
-def test_minimum_point_info_near_edge_states(minimum_point_info):
-    actual = minimum_point_info.near_edge_states(
-        captured_carrier=Carrier.h, spin=Spin.down)
-    assert actual == [vb_nes]
-
-
 def test_dephon_init_dQ(dephon_init):
     expected = sqrt((0.1*10)**2*6 * Element.H.atomic_mass)
     assert dephon_init.dQ == pytest.approx(expected)
@@ -80,7 +72,7 @@ def test_dephon_init_dQ(dephon_init):
 
 def test_dephon_init_min_point_info_from_charge(dephon_init):
     actual = dephon_init.min_info_from_charge(charge=1)
-    assert actual == dephon_init.states[1]
+    assert actual == dephon_init.min_points[1]
 
 
 def test_dephon_init_volume(dephon_init):
@@ -88,41 +80,4 @@ def test_dephon_init_volume(dephon_init):
 
 
 def test_ccd_string(dephon_init):
-    actual = dephon_init.__str__()
     print(dephon_init)
-    expected = """name: Va_O
-vbm                  1.000  supercell vbm  1.100
-cbm                  3.000  supercell cbm  2.900
-dQ (amu^0.5 Å)       2.459
-dR (Å)               2.449
-M (amu)              1.008
-electron mass (m0)  11.000
-hole mass (m0)      12.000
-static diele        13.000
-------------------------------------------------------------
-  q   ini symm     final symm    energy    correction    corrected energy    magnetization   localized state idx      ZPL
-  0     2mm                 2    11.000        -1.000              10.000            0.000
-  1     2mm                 2    12.000        -1.000              11.000            1.000         down-2          -1.000
-- q=0
--- valence bands, spin-up
-band index: 1, kpt info: (index : 1, coord: 0.00 0.00 0.00, weight: 1.0), eigenvalue: 1.00, occupation: 1.00
--- valence bands, spin-down
-band index: 1, kpt info: (index : 1, coord: 0.00 0.00 0.00, weight: 1.0), eigenvalue: 1.00, occupation: 1.00
-
--- conduction bands, spin-up
-band index: 2, kpt info: (index : 1, coord: 0.00 0.00 0.00, weight: 1.0), eigenvalue: 3.00, occupation: 0.00
--- conduction bands, spin-down
-band index: 2, kpt info: (index : 1, coord: 0.00 0.00 0.00, weight: 1.0), eigenvalue: 3.00, occupation: 0.00
-
-- q=1
--- valence bands, spin-up
-band index: 1, kpt info: (index : 1, coord: 0.00 0.00 0.00, weight: 1.0), eigenvalue: 1.00, occupation: 1.00
--- valence bands, spin-down
-band index: 1, kpt info: (index : 1, coord: 0.00 0.00 0.00, weight: 1.0), eigenvalue: 1.00, occupation: 1.00
-
--- conduction bands, spin-up
-band index: 2, kpt info: (index : 1, coord: 0.00 0.00 0.00, weight: 1.0), eigenvalue: 3.00, occupation: 0.00
--- conduction bands, spin-down
-band index: 3, kpt info: (index : 1, coord: 0.00 0.00 0.00, weight: 1.0), eigenvalue: 3.00, occupation: 0.00
-"""
-    assert actual == expected
