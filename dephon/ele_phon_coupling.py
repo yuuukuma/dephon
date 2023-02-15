@@ -1,14 +1,13 @@
 # -*- coding: utf-8 -*-
 #  Copyright (c) 2022 Kumagai group.
 from dataclasses import dataclass, field
-from typing import List, Union, Dict, Optional
+from typing import Union, Dict, Optional
 
 import numpy as np
 from monty.json import MSONable
 from numpy.linalg import LinAlgError
 from pymatgen.electronic_structure.core import Spin
 from tabulate import tabulate
-from vise.util.mix_in import ToJsonFileMixIn
 
 from dephon.enum import Carrier
 from dephon.util import spin_to_idx
@@ -21,7 +20,7 @@ class InnerProduct(MSONable):
         inner_products: \bra_{psi_i(0)} | S(0) |\ket_{psi_f(Q)}
         used_for_fitting:
     """
-    inner_product: float
+    abs_inner_product: float
     used_for_fitting: bool = True
 
 
@@ -37,13 +36,17 @@ class EPMatrixElement(MSONable):
         inner_products: List of \bra_{psi_i(0)} | S(0) |\ket_{psi_f(Q)}
             at the given Q points.
     """
+    charge: int
+    base_disp_ratio: float
+    captured_carrier: Carrier
     band_edge_index: int
     defect_band_index: int
     spin: Union[Spin, str]
     eigenvalue_diff: float
     kpt_idx: int
+#    kpt_weigh: float
     # Currently, symmetry is assumed not to be changed depending on dQ.
-    kpt_coord: List[float]
+#    kpt_coord: List[float]
     # key dQ:
     inner_products: Dict[float, InnerProduct] = field(default_factory=dict)
 
@@ -68,7 +71,7 @@ class EPMatrixElement(MSONable):
 
     @property
     def inner_prods(self):
-        return [ip.inner_product for ip in self.inner_products.values()]
+        return [ip.abs_inner_product for ip in self.inner_products.values()]
 
     @property
     def _inner_prod_vs_q(self):
@@ -103,7 +106,7 @@ class EPMatrixElement(MSONable):
 
         inner_prods = []
         for dQ, ip in self.inner_products.items():
-            inner_prods.append([dQ, ip.inner_product, ip.used_for_fitting])
+            inner_prods.append([dQ, ip.abs_inner_product, ip.used_for_fitting])
 
         result.append(tabulate(inner_prods,
                                headers=["dQ", "inner product",
@@ -112,48 +115,50 @@ class EPMatrixElement(MSONable):
 
         return "\n".join(result)
 
-
-@dataclass
-class EPCoupling(MSONable, ToJsonFileMixIn):
-    """ E-P coupling constants between defect band and multiple band edges
-
-    Attributes:
-        defect_band_index: The defect band index starting from 1.
-    """
-    charge: int
-    disp: float
-    captured_carrier: Carrier
-    volume: float
-    ave_captured_carrier_mass: float
-    ave_static_diele_const: float
-    # int is band_edge_index.
-    e_p_matrix_elements: List[EPMatrixElement] = None
-
-    def reset_inner_prod(self):
-        self.e_p_matrix_elements = []
-
-    def __str__(self):
-        result = []
-        mass = round(self.ave_captured_carrier_mass, 2)
-        diele_const = round(self.ave_static_diele_const, 2)
-        table = [["charge", self.charge],
-                 ["base disp", self.disp],
-                 ["captured carrier", self.captured_carrier],
-                 ["volume", round(self.volume, 2)],
-                 ["averaged carrier mass", mass],
-                 ["averaged static dielectric constant", diele_const]]
-        result.append(tabulate(table, tablefmt="plain", floatfmt=".3f"))
-
-        if self.e_p_matrix_elements is None:
-            return "\n".join(result)
-
-        for ep_elem in self.e_p_matrix_elements:
-            result.append("-" * 50)
-            result.append(ep_elem.__str__())
-
-        return "\n".join(result)
-
-    @property
-    def wif(self):
-        return sum([ep_elem.e_p_matrix_element()
-                    for ep_elem in self.e_p_matrix_elements])
+#
+# @dataclass
+# class EPCoupling(MSONable, ToJsonFileMixIn):
+#     """ E-P coupling constants between defect band and multiple band edges
+#
+#     To define the localized orbitals, we need to determine the charge and
+#     displacement (base_disp).
+#
+#     Attributes:
+#         ave_captured_carrier_mass:
+#             This is needed to calculate the Sommerfeld parameter and the
+#             thermal velocity.
+#         ave_static_diele_const:
+#             This is needed to calculate the Sommerfeld parameter.
+#
+#     """
+#     base_disp: float
+#     volume: float
+#     ave_captured_carrier_mass: float
+#     ave_static_diele_const: float
+#     # TODO: In the future, consider multiple host and defect bands.
+#     e_p_matrix_element: Optional[EPMatrixElement] = None
+#
+#     def reset_inner_prod(self):
+#         self.e_p_matrix_element = None
+#
+#     def __str__(self):
+#         result = []
+#         mass = round(self.ave_captured_carrier_mass, 2)
+#         diele_const = round(self.ave_static_diele_const, 2)
+#         table = [["charge", self.charge],
+#                  ["base disp", self.base_disp],
+#                  ["captured carrier", self.captured_carrier],
+#                  ["volume", round(self.volume, 2)],
+#                  ["averaged carrier mass", mass],
+#                  ["averaged static dielectric constant", diele_const]]
+#         result.append(tabulate(table, tablefmt="plain", floatfmt=".3f"))
+#
+#         if self.e_p_matrix_element:
+#             result.append("-" * 50)
+#             result.append(self.e_p_matrix_element.__str__())
+#
+#         return "\n".join(result)
+#
+#     @property
+#     def wif(self):
+#         return self.e_p_matrix_element.e_p_matrix_element()

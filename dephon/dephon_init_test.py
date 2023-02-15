@@ -8,7 +8,7 @@ from pydefect.analyzer.band_edge_states import LocalizedOrbital
 from pymatgen.core import Lattice, Structure, Element
 from vise.tests.helpers.assertion import assert_json_roundtrip
 
-from dephon.dephon_init import get_dR, MinimumPointInfo, NearEdgeState
+from dephon.dephon_init import get_dR, MinimumPointInfo, BandEdgeState
 
 
 def test_get_dR():
@@ -18,7 +18,7 @@ def test_get_dR():
     assert get_dR(structure1, structure2) == sqrt(1**2+2**2+3**2)
 
 
-vb_nes = NearEdgeState(band_index=1,
+vb_nes = BandEdgeState(band_index=1,
                        kpt_coord=[0.0]*3,
                        kpt_weight=1.0,
                        kpt_index=1,
@@ -36,7 +36,7 @@ def minimum_point_info(ground_structure):
                                 ave_energy=2.0,
                                 occupation=1.0,
                                 orbitals={"O": [0.0, 1.0, 0.0]})
-    cb_nes_up = NearEdgeState(band_index=2,
+    cb_nes_up = BandEdgeState(band_index=2,
                               kpt_coord=[0.0]*3,
                               kpt_weight=1.0,
                               kpt_index=1,

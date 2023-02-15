@@ -19,7 +19,7 @@ from vise.util.logger import get_logger
 from vise.util.matplotlib import float_to_int_formatter
 from vise.util.mix_in import ToJsonFileMixIn
 
-from dephon.dephon_init import NearEdgeState
+from dephon.dephon_init import BandEdgeState
 from dephon.enum import CorrectionType, Carrier
 from dephon.util import spin_to_idx
 
@@ -41,8 +41,8 @@ class SinglePointInfo(MSONable, ToJsonFileMixIn):
     localized_orbitals: List[List[LocalizedOrbital]] \
         = field(default_factory=list)
     # [spin][bands]
-    valence_bands: List[List[NearEdgeState]] = field(default_factory=list)
-    conduction_bands: List[List[NearEdgeState]] = field(default_factory=list)
+    valence_bands: List[List[BandEdgeState]] = field(default_factory=list)
+    conduction_bands: List[List[BandEdgeState]] = field(default_factory=list)
     is_shallow: bool = None
     correction_method: CorrectionType = None
     # whether this point is used for the quadratic fitting.
@@ -50,13 +50,25 @@ class SinglePointInfo(MSONable, ToJsonFileMixIn):
     # This needs to be here to make table_for_plot
     base_energy: float = 0.0  # This must be same in the same (Single)Ccd class
 
-    def near_edge_states(self,
-                         capped_carrier: Carrier,
-                         spin: Spin) -> List[NearEdgeState]:
+    def band_edge_state(self,
+                        capped_carrier: Carrier,
+                        spin: Spin,
+                        band_edge_index: int) -> BandEdgeState:
         bands = self.conduction_bands \
             if capped_carrier is Carrier.e else self.valence_bands
         idx = 0 if len(bands) == 1 else spin_to_idx(spin)
-        return bands[idx]
+        for band in bands[idx]:
+            if band.band_index == band_edge_index:
+                return band
+        raise ValueError
+
+    def localized_orbital(self,
+                          spin: Spin,
+                          defect_band_index: int) -> LocalizedOrbital:
+        for lo in self.localized_orbitals[spin_to_idx(spin)]:
+            if lo.band_idx == defect_band_index:
+                return lo
+        raise ValueError
 
     @property
     def relative_energy(self):

@@ -3,7 +3,7 @@
 import os
 from argparse import Namespace
 from pathlib import Path
-from typing import List
+from typing import List, Tuple
 
 import yaml
 from monty.serialization import loadfn
@@ -25,11 +25,10 @@ from dephon.capture_rate import calc_phonon_overlaps, CaptureRate
 from dephon.config_coord import SinglePointInfo, CcdPlotter, \
     SingleCcd, SingleCcdId, Ccd
 from dephon.corrections import DephonCorrection
-from dephon.dephon_init import DephonInit, MinimumPointInfo, NearEdgeState
-from dephon.ele_phon_coupling import EPCoupling
+from dephon.dephon_init import DephonInit, MinimumPointInfo, BandEdgeState
 from dephon.enum import CorrectionType
 from dephon.make_config_coord import MakeCcd
-from dephon.make_ele_phon_coupling import MakeInitialEPCoupling, \
+from dephon.make_e_p_matrix_element import MakeEPMatrixElement, \
     add_inner_products
 from dephon.plot_eigenvalues import DephonEigenvaluePlotter
 from dephon.util import spin_to_idx
@@ -53,7 +52,7 @@ def make_near_edge_states(band_edge_orbital_infos: BandEdgeOrbitalInfos,
             if e_from_band_edge > threshold:
                 continue
             band_idx = rel_idx + band_edge_orbital_infos.lowest_band_index + 1
-            result.append(NearEdgeState(band_idx,
+            result.append(BandEdgeState(band_idx,
                                         k_coords,
                                         k_weight,
                                         k_idx_from_1,
@@ -69,7 +68,8 @@ def make_min_point_info_from_dir(_dir: Path):
         = loadfn(_dir / "defect_structure_info.json")
     band_edge_states: BandEdgeStates = loadfn(_dir / "band_edge_states.json")
 
-    band_edge_orbital_infos: BandEdgeOrbitalInfos = loadfn(_dir / "band_edge_orbital_infos.json")
+    band_edge_orbital_infos: BandEdgeOrbitalInfos = \
+        loadfn(_dir / "band_edge_orbital_infos.json")
     localized_orbitals, valence_bands, conduction_bands = get_orbs(
         band_edge_orbital_infos, band_edge_states)
     min_point_info = MinimumPointInfo(
@@ -82,15 +82,19 @@ def make_min_point_info_from_dir(_dir: Path):
         initial_site_symmetry=defect_structure_info.initial_site_sym,
         final_site_symmetry=defect_structure_info.final_site_sym,
         parsed_dir=str(_dir.absolute()),
-        valence_bands=valence_bands,
-        conduction_bands=conduction_bands)
+        vbm=valence_bands,
+        cbm=conduction_bands)
 
-    return min_point_info, energy_info.name
+    volume = defect_structure_info.shifted_final_structure.volume
+
+    return min_point_info, energy_info.name, volume
 
 
-def get_orbs(band_edge_orbital_infos, band_edge_states):
+def get_orbs(band_edge_orbital_infos: BandEdgeOrbitalInfos,
+             band_edge_states: BandEdgeStates
+             ) -> Tuple[List, List, List]:
     localized_orbitals, valence_bands, conduction_bands = [], [], []
-    for state, spin in zip(band_edge_states.min_points, [Spin.up, Spin.down]):
+    for state, spin in zip(band_edge_states.states, [Spin.up, Spin.down]):
         localized_orbitals.append(state.localized_orbitals)
         valence_bands.append(make_near_edge_states(band_edge_orbital_infos,
                                                    spin,
@@ -98,12 +102,12 @@ def get_orbs(band_edge_orbital_infos, band_edge_states):
         conduction_bands.append(make_near_edge_states(band_edge_orbital_infos,
                                                       spin,
                                                       state.cbm_info.energy))
-    return localized_orbitals, valence_bands, conduction_bands,
+    return localized_orbitals, valence_bands, conduction_bands
 
 
 def make_dephon_init(args: Namespace):
-    state1, name1 = make_min_point_info_from_dir(args.first_dir)
-    state2, name2 = make_min_point_info_from_dir(args.second_dir)
+    min_point_1, name1, volume = make_min_point_info_from_dir(args.first_dir)
+    min_point_2, name2, _ = make_min_point_info_from_dir(args.second_dir)
 
     if name1 != name2:
         logger.warning("The names of ground and excited states are "
@@ -113,16 +117,19 @@ def make_dephon_init(args: Namespace):
     ave_hole_mass = args.effective_mass.average_mass("p", concentration)
     ave_electron_mass = args.effective_mass.average_mass("n", concentration)
     dephon_init = DephonInit(defect_name=name1,
-                             states=[state1, state2],
+                             min_points=[min_point_1, min_point_2],
                              vbm=args.unitcell.vbm,
                              cbm=args.unitcell.cbm,
+                             supercell_volume=volume,
                              supercell_vbm=args.p_state.vbm_info.energy,
                              supercell_cbm=args.p_state.cbm_info.energy,
                              ave_hole_mass=ave_hole_mass,
                              ave_electron_mass=ave_electron_mass,
-                             ave_static_diele_const=args.unitcell.ave_ele_diele)
+                             ave_static_diele_const=args.unitcell.ave_ele_diele,
+                             )
 
-    path = Path(f"cc/{dephon_init.defect_name}_{state1.charge}_{state2.charge}")
+    charge_transition = f"{min_point_1.charge}_{min_point_2.charge}"
+    path = Path(f"cc/{dephon_init.defect_name}_{charge_transition}")
     if path.exists() is False:
         path.mkdir(parents=True)
 
@@ -289,12 +296,13 @@ def _make_wswq_dir(dir_, dephon_init: DephonInit):
     os.symlink((original_dir/"WAVECAR").absolute(), (wswq_dir/"WAVECAR"))
 
 
-def make_initial_e_p_coupling(args: Namespace):
-    make_init = MakeInitialEPCoupling(args.dephon_init,
-                                      args.ccd,
-                                      args.captured_carrier,
-                                      args.disp,
-                                      args.charge_for_e_p_coupling)
+def make_e_p_matrix_element(args: Namespace):
+    make_init = MakeEPMatrixElement(args.dephon_init,
+                                    args.ccd,
+                                    args.captured_carrier,
+                                    args.disp,
+                                    args.charge_for_e_p_coupling,
+                                    )
     e_p_coupling = make_init.make()
     print(e_p_coupling)
     e_p_coupling.to_json_file()

@@ -18,8 +18,7 @@ from dephon.cli.main_function import make_dephon_init, make_ccd, plot_ccd, \
     update_e_p_coupling
 from dephon.config_coord import SinglePointInfo, SingleCcd, Ccd
 from dephon.corrections import DephonCorrection
-from dephon.dephon_init import DephonInit, MinimumPointInfo, NearEdgeState
-from dephon.ele_phon_coupling import EPCoupling
+from dephon.dephon_init import DephonInit, MinimumPointInfo, BandEdgeState
 from dephon.enum import CorrectionType, Carrier
 
 
@@ -51,13 +50,13 @@ def test_make_ccd_dirs(tmpdir, ground_structure, excited_structure,
                                      initial_site_symmetry="",
                                      final_site_symmetry="",
                                      parsed_dir="",
-                                     vbm=[NearEdgeState(band_index=10,
+                                     vbm=[BandEdgeState(band_index=10,
                                                         kpt_coord=[0.0]*3,
                                                         kpt_weight=1.0,
                                                         kpt_index=1,
                                                         eigenvalue=1.0,
                                                         occupation=1.0)],
-                                     cbm=[NearEdgeState(band_index=11,
+                                     cbm=[BandEdgeState(band_index=11,
                                                         kpt_coord=[0.0]*3,
                                                         kpt_weight=1.0,
                                                         kpt_index=1,
@@ -72,13 +71,13 @@ def test_make_ccd_dirs(tmpdir, ground_structure, excited_structure,
                                     initial_site_symmetry="",
                                     final_site_symmetry="",
                                     parsed_dir="",
-                                    vbm=[NearEdgeState(band_index=10,
+                                    vbm=[BandEdgeState(band_index=10,
                                                        kpt_coord=[0.0]*3,
                                                        kpt_weight=1.0,
                                                        kpt_index=1,
                                                        eigenvalue=1.0,
                                                        occupation=1.0)],
-                                    cbm=[NearEdgeState(band_index=11,
+                                    cbm=[BandEdgeState(band_index=11,
                                                        kpt_coord=[0.0]*3,
                                                        kpt_weight=1.0,
                                                        kpt_index=1,
@@ -86,7 +85,8 @@ def test_make_ccd_dirs(tmpdir, ground_structure, excited_structure,
                                                        occupation=0.0)],
                                     ),
                 ],
-        vbm=-100.0, cbm=100.0, supercell_vbm=-100.0, supercell_cbm=100.0,
+        vbm=-100.0, cbm=100.0, supercell_volume=10.0,
+        supercell_vbm=-100.0, supercell_cbm=100.0,
         ave_electron_mass=1.0, ave_hole_mass=1.0, ave_static_diele_const=1.0)
 
     Path("test").mkdir()

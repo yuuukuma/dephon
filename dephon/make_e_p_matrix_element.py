@@ -1,0 +1,75 @@
+# -*- coding: utf-8 -*-
+#  Copyright (c) 2022 Kumagai group.
+from typing import Dict, Tuple, Optional, List
+
+import numpy as np
+from pymatgen.electronic_structure.core import Spin
+from vise.util.logger import get_logger
+
+from dephon.config_coord import SingleCcd
+from dephon.ele_phon_coupling import EPMatrixElement, InnerProduct
+from dephon.enum import Carrier
+from dephon.util import spin_to_idx
+
+logger = get_logger(__name__)
+
+
+wswq_type = Dict[Optional[Tuple[int, int]], Dict[Tuple[int, int], complex]]
+
+
+class MakeEPMatrixElement:
+    def __init__(self,
+                 base_disp_ratio: float,
+                 single_ccd: SingleCcd,
+                 captured_carrier: Carrier,
+                 band_edge_index: int,
+                 defect_band_index: int,
+                 kpoint_index: int,
+                 spin: Spin,
+                 wswqs: List[Tuple[float, wswq_type]],
+                 ):
+        self.charge = single_ccd.charge
+        self.base_disp_ratio = base_disp_ratio
+        self.captured_carrier = captured_carrier
+        self.band_edge_index = band_edge_index
+        self.defect_band_index = defect_band_index
+
+        single_point_info = single_ccd.disp_point_info(base_disp_ratio)
+        band_edge_state = single_point_info.band_edge_state(
+            captured_carrier, spin, band_edge_index)
+        defect_state = single_point_info.localized_orbital(
+            spin, defect_band_index)
+        self.energy_diff = band_edge_state.eigenvalue - defect_state.ave_energy
+
+        if captured_carrier is Carrier.h:
+            self.energy_diff *= -1
+
+        self.spin = spin
+        self.kpt_index = kpoint_index
+        self.wswqs = wswqs
+
+    def make(self):
+        ip = {dQ: self._add_inner_products(wswq) for dQ, wswq in self.wswqs}
+        return EPMatrixElement(charge=self.charge,
+                               base_disp_ratio=self.base_disp_ratio,
+                               captured_carrier=self.captured_carrier,
+                               band_edge_index=self.band_edge_index,
+                               defect_band_index=self.defect_band_index,
+                               spin=self.spin,
+                               eigenvalue_diff=self.energy_diff,
+                               kpt_idx=self.kpt_index,
+                               inner_products=ip)
+
+    def _add_inner_products(self, wswq: wswq_type):
+        """    Returns
+        -------
+        dict(dict)
+            a dict of dicts that takes keys (spin, kpoint) and (initial, final) as
+            indices and maps it to a complex number"""
+        spin_kpt_pair = (spin_to_idx(self.spin, True), self.kpt_index)
+        band_indices = (self.band_edge_index, self.defect_band_index)
+        braket = np.abs(wswq[spin_kpt_pair][tuple(band_indices)])
+        return InnerProduct(abs_inner_product=braket)
+
+
+

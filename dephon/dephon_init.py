@@ -34,7 +34,7 @@ def get_dR(ground: Structure, excited: Structure) -> float:
 
 
 @dataclass
-class NearEdgeState(MSONable):
+class BandEdgeState(MSONable):
     band_index: int  # begin from 1.
     kpt_coord: List[float]
     kpt_weight: float
@@ -69,6 +69,8 @@ class MinimumPointInfo(MSONable):
             [Spin up orbitals, Spin down orbitals]
         initial_site_symmetry (str): Site symmetry before relaxing _default_single_ccd_for_e_p_coupling defect.
         final_site_symmetry (str): Site symmetry after relaxing _default_single_ccd_for_e_p_coupling defect.
+        vbm:
+        cbm:
         parse_dir (str): Directory where the calculation results of this
             minimum point are stored. This should be an absolute path.
     """
@@ -79,9 +81,9 @@ class MinimumPointInfo(MSONable):
     magnetization: float
     localized_orbitals: List[List[LocalizedOrbital]]
     initial_site_symmetry: str
-    vbm: List[NearEdgeState]  # [spin]
-    cbm: List[NearEdgeState]  # [spin]
     final_site_symmetry: str
+    vbm: List[BandEdgeState]  # by spin
+    cbm: List[BandEdgeState]  # by spin
     # absolute dir
     parsed_dir: str
 
@@ -128,6 +130,7 @@ class DephonInit(MSONable, ToJsonFileMixIn):
     min_points: List[MinimumPointInfo]
     vbm: float
     cbm: float
+    supercell_volume: float
     supercell_vbm: float
     supercell_cbm: float
     ave_electron_mass: float

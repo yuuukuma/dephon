@@ -9,8 +9,8 @@ from pymatgen.core import Structure, Lattice
 from pymatgen.electronic_structure.core import Spin
 
 from dephon.config_coord import SinglePointInfo, Ccd, SingleCcd, SingleCcdId
-from dephon.dephon_init import MinimumPointInfo, DephonInit, NearEdgeState
-from dephon.ele_phon_coupling import InnerProduct, EPMatrixElement, EPCoupling
+from dephon.dephon_init import MinimumPointInfo, DephonInit, BandEdgeState
+from dephon.ele_phon_coupling import InnerProduct, EPMatrixElement
 from dephon.enum import Carrier
 
 
@@ -73,13 +73,13 @@ direct
 0.0 0.0 0.85""", fmt="poscar")
 
 
-vb = NearEdgeState(band_index=1,
+vb = BandEdgeState(band_index=1,
                    kpt_coord=[0.0]*3,
                    kpt_index=1,
                    kpt_weight=1.0,
                    eigenvalue=1.0,
                    occupation=1.0)
-cb = NearEdgeState(band_index=2,
+cb = BandEdgeState(band_index=2,
                    kpt_coord=[0.0]*3,
                    kpt_index=1,
                    kpt_weight=1.0,
@@ -120,7 +120,8 @@ def dephon_init(ground_structure, excited_structure):
                                cbm=[cb, cb_w_lo])
     # transition level = -1.0 from CBM
     return DephonInit(defect_name="Va_O", min_points=[va_o1_0, va_o1_1],
-                      vbm=1.0, cbm=3.0, supercell_vbm=1.1, supercell_cbm=2.9,
+                      vbm=1.0, cbm=3.0, supercell_volume=100.0,
+                      supercell_vbm=1.1, supercell_cbm=2.9,
                       ave_electron_mass=11.0, ave_hole_mass=12.0,
                       ave_static_diele_const=13.0)
 
@@ -152,8 +153,7 @@ def e_p_matrix_elem():
     ip_2 = InnerProduct(inner_product=1.0, used_for_fitting=True)
     ip_3 = InnerProduct(inner_product=2.0, used_for_fitting=True)
 
-    return EPMatrixElement(band_edge_index=1,
-                           defect_band_index=2,
+    return EPMatrixElement(defect_band_index=2,
                            spin=Spin.down,
                            eigenvalue_diff=0.1,
                            kpt_idx=1,
@@ -165,9 +165,10 @@ def e_p_matrix_elem():
 def e_p_coupling(e_p_matrix_elem):
     return EPCoupling(
         charge=1,
-        disp=0.0,
+        base_disp=0.0,
         captured_carrier=Carrier.e,
         volume=100.0,
         ave_captured_carrier_mass=1.0,
         ave_static_diele_const=2.0,
+        band_edge_index=1,
         e_p_matrix_elements=[e_p_matrix_elem])
