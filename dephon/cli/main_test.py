@@ -8,7 +8,7 @@ from vise.analyzer.effective_mass import EffectiveMass
 
 from dephon.cli.main import parse_args_main
 from dephon.cli.main_function import update_single_point_infos, make_ccd, \
-    plot_eigenvalues, make_single_ccd, make_initial_e_p_coupling
+    plot_eigenvalues, add_point_infos_to_single_ccd
 from dephon.config_coord import Ccd, SingleCcd
 from dephon.dephon_init import DephonInit
 from dephon.enum import Carrier
@@ -84,7 +84,7 @@ def test_main_make_single_point_infos():
 
 def test_main_make_single_ccd():
     parsed_args = parse_args_main(["msc", "-d", "disp_0.0"])
-    expected = Namespace(dirs=[Path("disp_0.0")], func=make_single_ccd)
+    expected = Namespace(dirs=[Path("disp_0.0")], func=add_point_infos_to_single_ccd)
     assert parsed_args == expected
 
 

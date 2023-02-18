@@ -7,12 +7,12 @@ from typing import List, Tuple
 
 import yaml
 from monty.serialization import loadfn
-from nonrad.elphon import _read_WSWQ
 from pydefect.analyzer.band_edge_states import BandEdgeStates, \
     BandEdgeOrbitalInfos
 from pydefect.analyzer.calc_results import CalcResults
 from pydefect.analyzer.defect_energy import DefectEnergyInfo
 from pydefect.analyzer.defect_structure_info import DefectStructureInfo
+from pydefect.analyzer.unitcell import Unitcell
 from pydefect.cli.main_functions import get_calc_results
 from pydefect.cli.main_tools import parse_dirs
 from pymatgen.electronic_structure.core import Spin
@@ -21,15 +21,13 @@ from vise.input_set.prior_info import PriorInfo
 from vise.util.file_transfer import FileLink
 from vise.util.logger import get_logger
 
-from dephon.capture_rate import calc_phonon_overlaps, CaptureRate
 from dephon.config_coord import SinglePointInfo, CcdPlotter, \
-    SingleCcd, SingleCcdId, Ccd
+    SingleCcd, SingleCcdId
 from dephon.corrections import DephonCorrection
 from dephon.dephon_init import DephonInit, MinimumPointInfo, BandEdgeState
 from dephon.enum import CorrectionType
 from dephon.make_config_coord import MakeCcd
-from dephon.make_e_p_matrix_element import MakeEPMatrixElement, \
-    add_inner_products
+from dephon.make_e_p_matrix_element import MakeEPMatrixElement
 from dephon.plot_eigenvalues import DephonEigenvaluePlotter
 from dephon.util import spin_to_idx
 
@@ -73,6 +71,7 @@ def make_min_point_info_from_dir(_dir: Path):
     localized_orbitals, valence_bands, conduction_bands = get_orbs(
         band_edge_orbital_infos, band_edge_states)
     min_point_info = MinimumPointInfo(
+        name=energy_info.name,
         charge=energy_info.charge,
         structure=calc_results.structure,
         energy=energy_info.defect_energy.formation_energy,
@@ -82,12 +81,12 @@ def make_min_point_info_from_dir(_dir: Path):
         initial_site_symmetry=defect_structure_info.initial_site_sym,
         final_site_symmetry=defect_structure_info.final_site_sym,
         parsed_dir=str(_dir.absolute()),
-        vbm=valence_bands,
-        cbm=conduction_bands)
+        valence_bands=valence_bands,
+        conduction_bands=conduction_bands)
 
     volume = defect_structure_info.shifted_final_structure.volume
 
-    return min_point_info, energy_info.name, volume
+    return min_point_info, volume
 
 
 def get_orbs(band_edge_orbital_infos: BandEdgeOrbitalInfos,
@@ -106,30 +105,29 @@ def get_orbs(band_edge_orbital_infos: BandEdgeOrbitalInfos,
 
 
 def make_dephon_init(args: Namespace):
-    min_point_1, name1, volume = make_min_point_info_from_dir(args.first_dir)
-    min_point_2, name2, _ = make_min_point_info_from_dir(args.second_dir)
+    min_point_1, volume = make_min_point_info_from_dir(args.first_dir)
+    min_point_2, _ = make_min_point_info_from_dir(args.second_dir)
 
-    if name1 != name2:
-        logger.warning("The names of ground and excited states are "
-                       f"{name1} and {name2}. Here, {name1} is used.")
+    if abs(min_point_1.charge - min_point_2.charge) != 1:
+        logger.warning("The charge difference is not 1. User needs to know"
+                       "what one is doing.")
 
     concentration = args.effective_mass.concentrations[0]
     ave_hole_mass = args.effective_mass.average_mass("p", concentration)
     ave_electron_mass = args.effective_mass.average_mass("n", concentration)
-    dephon_init = DephonInit(defect_name=name1,
-                             min_points=[min_point_1, min_point_2],
-                             vbm=args.unitcell.vbm,
-                             cbm=args.unitcell.cbm,
+    unitcell: Unitcell = args.unitcell
+    dephon_init = DephonInit(min_points=[min_point_1, min_point_2],
+                             vbm=unitcell.vbm,
+                             cbm=unitcell.cbm,
                              supercell_volume=volume,
                              supercell_vbm=args.p_state.vbm_info.energy,
                              supercell_cbm=args.p_state.cbm_info.energy,
                              ave_hole_mass=ave_hole_mass,
                              ave_electron_mass=ave_electron_mass,
-                             ave_static_diele_const=args.unitcell.ave_ele_diele,
+                             ave_static_diele_const=unitcell.ave_ele_diele,
                              )
 
-    charge_transition = f"{min_point_1.charge}_{min_point_2.charge}"
-    path = Path(f"cc/{dephon_init.defect_name}_{charge_transition}")
+    path = Path(f"cc/{min_point_1.full_name}__{min_point_2.full_name}")
     if path.exists() is False:
         path.mkdir(parents=True)
 
@@ -213,7 +211,7 @@ def update_single_point_infos(args: Namespace):
     parse_dirs(args.dirs, _inner, verbose=True)
 
 
-def make_single_ccd(args: Namespace):
+def add_point_infos_to_single_ccd(args: Namespace):
     def _inner(dir_: Path):
         return loadfn(dir_ / "single_point_info.json")
 
@@ -297,47 +295,39 @@ def _make_wswq_dir(dir_, dephon_init: DephonInit):
 
 
 def make_e_p_matrix_element(args: Namespace):
-    make_init = MakeEPMatrixElement(args.dephon_init,
-                                    args.ccd,
-                                    args.captured_carrier,
-                                    args.disp,
-                                    args.charge_for_e_p_coupling,
-                                    )
-    e_p_coupling = make_init.make()
-    print(e_p_coupling)
-    e_p_coupling.to_json_file()
+    make_e_p_matrix_elem = MakeEPMatrixElement(
+        base_disp_ratio=args.disp,
+        single_ccd=args.ccd,
+        captured_carrier=args.captured_carrier,
+        band_edge_index=args.band_edge_index,
+        defect_band_index=args.defect_band_index,
+        kpoint_index=args.kpoint_index,
+        spin=args.spin,
+        wswqs=args.wswq_files)
+    e_p_matrix_elem = make_e_p_matrix_elem.make()
+    print(e_p_matrix_elem)
+    e_p_matrix_elem.to_json_file()
 
 
-def update_e_p_coupling(args: Namespace):
-    result: EPCoupling = loadfn(args.e_p_coupling_filename)
-    for dir_ in args.dirs:
-        single_info: SinglePointInfo = loadfn(dir_ / "single_point_info.json")
-        wswq = _read_WSWQ(dir_ / "wswq/WSWQ")
-        add_inner_products(result, wswq=wswq, dQ=single_info.dQ)
-        print(result)
+# def make_capture_rate(args: Namespace):
+#     dephon_init: DephonInit = args.dephon_init
+#     ccd: Ccd = args.ccd
+#     e_p_coupling: EPCoupling = args.e_p_coupling
+#     temperatures: List[float] = args.temperatures
 
-    result.to_json_file(args.e_p_coupling_filename)
+    # carrier = e_p_coupling.captured_carrier
+    # i_ccd, f_ccd = ccd.initial_and_final_ccd_from_captured_carrier(carrier)
+    # i_min_info = dephon_init.min_info_from_charge(i_ccd.charge)
+    # f_min_info = dephon_init.min_info_from_charge(f_ccd.charge)
+    # i_deg = i_min_info.degeneracy_by_symmetry_reduction
+    # f_deg = f_min_info.degeneracy_by_symmetry_reduction
 
+    # phonon_overlaps = calc_phonon_overlaps(i_ccd, f_ccd, temperatures)
 
-def make_capture_rate(args: Namespace):
-    dephon_init: DephonInit = args.dephon_init
-    ccd: Ccd = args.ccd
-    e_p_coupling: EPCoupling = args.e_p_coupling
-    temperatures: List[float] = args.temperatures
-
-    carrier = e_p_coupling.captured_carrier
-    i_ccd, f_ccd = ccd.initial_and_final_ccd_from_captured_carrier(carrier)
-    i_min_info = dephon_init.min_info_from_charge(i_ccd.charge)
-    f_min_info = dephon_init.min_info_from_charge(f_ccd.charge)
-    i_deg = i_min_info.degeneracy_by_symmetry_reduction
-    f_deg = f_min_info.degeneracy_by_symmetry_reduction
-
-    phonon_overlaps = calc_phonon_overlaps(i_ccd, f_ccd, temperatures)
-
-    cap_rate = CaptureRate(Wif=e_p_coupling.wif,
-                           phonon_overlaps=phonon_overlaps,
-                           temperatures=temperatures,
-                           degeneracy=f_deg / i_deg,
-                           volume=e_p_coupling.volume)
-    print(cap_rate)
-    cap_rate.to_json_file()
+    # cap_rate = CaptureRate(Wif=e_p_coupling.wif,
+    #                        phonon_overlaps=phonon_overlaps,
+    #                        temperatures=temperatures,
+    #                        degeneracy=f_deg / i_deg,
+    #                        volume=e_p_coupling.volume)
+    # print(cap_rate)
+    # cap_rate.to_json_file()

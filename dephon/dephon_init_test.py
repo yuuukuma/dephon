@@ -44,17 +44,22 @@ def minimum_point_info(ground_structure):
                               occupation=0.0)
     cb_nes_down = copy(cb_nes_up)
     cb_nes_down.band_index = 3
-    return MinimumPointInfo(charge=-1,
+    return MinimumPointInfo(name="test",
+                            charge=-1,
                             structure=ground_structure,
                             energy=-90.0,
                             correction_energy=1.0,
                             magnetization=1.0,
                             localized_orbitals=[[], [orb_info]],
-                            vbm=[vb_nes],
-                            cbm=[cb_nes_up, cb_nes_down],
+                            valence_bands=[[vb_nes]],
+                            conduction_bands=[[cb_nes_up, cb_nes_down]],
                             initial_site_symmetry="4mm",
                             final_site_symmetry="2/m",
                             parsed_dir="/path/to/min_point")
+
+
+def test_(minimum_point_info):
+    print(minimum_point_info)
 
 
 def test_json_roundtrip(dephon_init, tmpdir):

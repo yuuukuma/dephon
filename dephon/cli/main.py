@@ -11,9 +11,7 @@ from pymatgen.io.vasp.inputs import UnknownPotcarWarning
 
 from dephon.cli.main_function import make_dephon_init, make_ccd, \
     make_ccd_dirs, plot_ccd, plot_eigenvalues, set_quadratic_fitting_q_range, \
-    make_wswq_dirs, update_single_point_infos, make_single_ccd, \
-    make_initial_e_p_coupling, update_e_p_coupling, make_capture_rate
-from dephon.enum import Carrier
+    make_wswq_dirs, update_single_point_infos, add_point_infos_to_single_ccd
 from dephon.version import __version__
 
 warnings.simplefilter('ignore', UnknownPotcarWarning)
@@ -101,9 +99,9 @@ def parse_args_main(args):
     parser_update_single_point_infos.set_defaults(
         func=update_single_point_infos)
 
-    # -- make_single_ccd -----------------------------------
+    # -- add_point_infos_to_single_ccd -----------------------------------
     parser_make_single_ccd = subparsers.add_parser(
-        name="make_single_ccd",
+        name="add_point_infos_to_single_ccd",
         description="Make single_point_info.json at each directory. "
                     "Before running this command, calc_results.json and "
                     "band_edge_states.json files need to be created using "
@@ -112,7 +110,7 @@ def parse_args_main(args):
         parents=[dirs],
         aliases=['msc'])
 
-    parser_make_single_ccd.set_defaults(func=make_single_ccd)
+    parser_make_single_ccd.set_defaults(func=add_point_infos_to_single_ccd)
 
     # -- make_ccd -----------------------------------
     parser_make_ccd = subparsers.add_parser(
@@ -172,24 +170,24 @@ def parse_args_main(args):
 
     parser_plot_eigenvalues.set_defaults(func=plot_eigenvalues)
 
-    # -- make_initial_e_p_coupling -----------------------------------
-    parser_make_initial_e_p_coupling = subparsers.add_parser(
-        name="make_initial_e_p_coupling",
-        parents=[dephon_init, ccd],
-        description="Make initial e_p_coupling.json file.",
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
-        aliases=['miepc'])
+    # # -- make_initial_e_p_coupling -----------------------------------
+    # parser_make_initial_e_p_coupling = subparsers.add_parser(
+    #     name="make_initial_e_p_coupling",
+    #     parents=[dephon_init, ccd],
+    #     description="Make initial e_p_coupling.json file.",
+    #     formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    #     aliases=['miepc'])
 
-    parser_make_initial_e_p_coupling.add_argument(
-        "-cc", "--captured_carrier", type=Carrier, required=True,
-        choices=Carrier.name_list())
-    parser_make_initial_e_p_coupling.add_argument(
-        "-d", "--disp", type=float, default=0.0)
-    parser_make_initial_e_p_coupling.add_argument(
-        "--charge_for_e_p_coupling", type=int,
-        help="Default is a charge with smaller absolute value.")
-    parser_make_initial_e_p_coupling.set_defaults(
-        func=make_initial_e_p_coupling)
+    # parser_make_initial_e_p_coupling.add_argument(
+    #     "-cc", "--captured_carrier", type=Carrier, required=True,
+    #     choices=Carrier.name_list())
+    # parser_make_initial_e_p_coupling.add_argument(
+    #     "-d", "--disp", type=float, default=0.0)
+    # parser_make_initial_e_p_coupling.add_argument(
+    #     "--charge_for_e_p_coupling", type=int,
+    #     help="Default is a charge with smaller absolute value.")
+    # parser_make_initial_e_p_coupling.set_defaults(
+    #     func=make_initial_e_p_coupling)
 
     # -- make_wswq_dirs -----------------------------------
     parser_make_wswq_dirs = subparsers.add_parser(
@@ -204,35 +202,35 @@ def parse_args_main(args):
         "--dirs", type=Path, nargs="+", default=[])
 
     parser_make_wswq_dirs.set_defaults(func=make_wswq_dirs)
-
-    # -- update_e_p_coupling -----------------------------------
-    parser_update_e_p_coupling = subparsers.add_parser(
-        name="update_e_p_coupling",
-        description="Make directories for calculating WSWQ files.",
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
-        aliases=['mwd'])
-
-    parser_update_e_p_coupling.add_argument(
-        "--e_p_coupling_filename", type=Path, default="dephon_init.json")
-    parser_update_e_p_coupling.add_argument(
-        "--dirs", type=Path, nargs="+", default=[])
-
-    parser_update_e_p_coupling.set_defaults(func=update_e_p_coupling)
-
-    # -- make_capture_rate -----------------------------------
-    parser_make_capture_rate = subparsers.add_parser(
-        name="make_capture_rate",
-        description="Make directories for calculating WSWQ files.",
-        parents=[dephon_init, ccd],
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
-        aliases=['mcr'])
-
-    parser_make_capture_rate.add_argument(
-        "--e_p_coupling", type=loadfn, required=True)
-    parser_make_capture_rate.add_argument(
-        "-t", "--temperatures", type=float, nargs="+")
-
-    parser_make_capture_rate.set_defaults(func=make_capture_rate)
+    #
+    # # -- update_e_p_coupling -----------------------------------
+    # parser_update_e_p_coupling = subparsers.add_parser(
+    #     name="update_e_p_coupling",
+    #     description="Make directories for calculating WSWQ files.",
+    #     formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    #     aliases=['mwd'])
+    #
+    # parser_update_e_p_coupling.add_argument(
+    #     "--e_p_coupling_filename", type=Path, default="dephon_init.json")
+    # parser_update_e_p_coupling.add_argument(
+    #     "--dirs", type=Path, nargs="+", default=[])
+    #
+    # parser_update_e_p_coupling.set_defaults(func=update_e_p_coupling)
+    #
+    # # -- make_capture_rate -----------------------------------
+    # parser_make_capture_rate = subparsers.add_parser(
+    #     name="make_capture_rate",
+    #     description="Make directories for calculating WSWQ files.",
+    #     parents=[dephon_init, ccd],
+    #     formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    #     aliases=['mcr'])
+    #
+    # parser_make_capture_rate.add_argument(
+    #     "--e_p_coupling", type=loadfn, required=True)
+    # parser_make_capture_rate.add_argument(
+    #     "-t", "--temperatures", type=float, nargs="+")
+    #
+    # parser_make_capture_rate.set_defaults(func=make_capture_rate)
     # ------------------------------------------------------------------------
     return parser.parse_args(args)
 

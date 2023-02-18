@@ -21,8 +21,8 @@ def dephon_init(ground_structure, excited_structure):
                                initial_site_symmetry="2mm",
                                final_site_symmetry="2",
                                parsed_dir="/path/to/Va_O1_0",
-                               vbm=[],
-                               cbm=[]
+                               valence_bands=[[]],
+                               conduction_bands=[[]]
                                )
     va_o1_1 = MinimumPointInfo(charge=1,
                                structure=excited_structure,
@@ -39,6 +39,7 @@ def dephon_init(ground_structure, excited_structure):
     # transition level = -1.0 from CBM
     return DephonInit(defect_name="Va_O",
                       min_points=[va_o1_0, va_o1_1],
+                      supercell_volume=10.0,
                       ave_electron_mass=1.0, ave_hole_mass=1.0,
                       ave_static_diele_const=1.0,
                       **band_edges)
@@ -47,7 +48,7 @@ def dephon_init(ground_structure, excited_structure):
 common = dict(is_shallow=False, used_for_fitting=True)
 
 
-def test(excited_structure, ground_structure, dephon_init):
+def test_make_ccd(excited_structure, ground_structure, dephon_init):
     ground = SingleCcd(SingleCcdId(name="from_0_to_1"),
                        charge=0,
                        point_infos=[SinglePointInfo(dQ=0.0,

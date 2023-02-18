@@ -113,4 +113,4 @@ class MakeCcd:
         for ccd in ccds:
             ccd.set_quadratic_fitting_range()
 
-        return Ccd(defect_name=self.dephon_init.defect_name, ccds=ccds)
+        return Ccd(name=self.dephon_init.name, ccds=ccds)

@@ -16,8 +16,8 @@ def test_reset_inner_products(e_p_coupling):
     assert e_p_coupling.e_p_matrix_elements == []
 
 
-inner_prod_1 = InnerProduct(inner_product=0.2)
-inner_prod_2 = InnerProduct(inner_product=1.2)
+inner_prod_1 = InnerProduct(abs_inner_product=0.2)
+inner_prod_2 = InnerProduct(abs_inner_product=1.2)
 
 
 def test_inner_prod_vs_q(e_p_matrix_elem):

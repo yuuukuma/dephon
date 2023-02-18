@@ -19,7 +19,7 @@ from vise.util.logger import get_logger
 from vise.util.matplotlib import float_to_int_formatter
 from vise.util.mix_in import ToJsonFileMixIn
 
-from dephon.dephon_init import BandEdgeState
+from dephon.dephon_init import BandEdgeState, joined_local_orbitals
 from dephon.enum import CorrectionType, Carrier
 from dephon.util import spin_to_idx
 
@@ -78,21 +78,13 @@ class SinglePointInfo(MSONable, ToJsonFileMixIn):
 
     @property
     def table_for_plot(self):
-        lo_str = []
-        for lo_by_spin, spin in zip(self.localized_orbitals, ["up", "down"]):
-            for lo_by_band in lo_by_spin:
-                occupation = f"{lo_by_band.occupation:.1f}"
-                lo_str.append(f"{spin}-{lo_by_band.band_idx}({occupation})")
-
-        joined_local_orbitals = ", ".join(lo_str)
-
         result = [self.dQ,
                   self.disp_ratio,
                   self.corrected_energy,
                   self.relative_energy,
                   self.used_for_fitting,
                   self.is_shallow,
-                  joined_local_orbitals]
+                  joined_local_orbitals(self.localized_orbitals)]
         return result
 
     def __str__(self):
@@ -121,7 +113,10 @@ class SingleCcd(MSONable, ToJsonFileMixIn):
     point_infos: List[SinglePointInfo] = field(default_factory=list)
 
     def __post_init__(self):
-        self.point_infos.sort(key=lambda x: x.dQ)
+        if self.point_infos:
+            self.point_infos.sort(key=lambda x: x.dQ)
+        elif self.point_infos is None:
+            self.point_infos = []
 
     @property
     def name(self):
@@ -231,7 +226,7 @@ def captured_carrier(initial: SingleCcd, final: SingleCcd):
 
 @dataclass
 class Ccd(MSONable, ToJsonFileMixIn):
-    defect_name: str
+    name: str
     ccds: List[SingleCcd]
 
     def single_ccd(self, single_ccd_id) -> SingleCcd:
@@ -254,7 +249,7 @@ class Ccd(MSONable, ToJsonFileMixIn):
         raise CarrierDiffError
 
     def __str__(self):
-        result = [f"name: {self.defect_name}"]
+        result = [f"name: {self.name}"]
 
         for imag in self.ccds:
             result.append("-"*50)

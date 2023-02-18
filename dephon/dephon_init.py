@@ -54,6 +54,15 @@ class BandEdgeState(MSONable):
         return ", ".join(x)
 
 
+def joined_local_orbitals(localized_orbitals):
+    lo_str = []
+    for lo_by_spin, spin in zip(localized_orbitals, ["up", "down"]):
+        for lo_by_band in lo_by_spin:
+            occupation = f"{lo_by_band.occupation:.1f}"
+            lo_str.append(f"{spin}-{lo_by_band.band_idx}({occupation})")
+    return ", ".join(lo_str)
+
+
 @dataclass
 class MinimumPointInfo(MSONable):
     """ Information at lowest energy point at given charge
@@ -74,6 +83,7 @@ class MinimumPointInfo(MSONable):
         parse_dir (str): Directory where the calculation results of this
             minimum point are stored. This should be an absolute path.
     """
+    name: str
     charge: int
     structure: Structure
     energy: float
@@ -82,17 +92,14 @@ class MinimumPointInfo(MSONable):
     localized_orbitals: List[List[LocalizedOrbital]]
     initial_site_symmetry: str
     final_site_symmetry: str
-    vbm: List[BandEdgeState]  # by spin
-    cbm: List[BandEdgeState]  # by spin
+    valence_bands: List[List[BandEdgeState]]  # by spin
+    conduction_bands: List[List[BandEdgeState]]  # by spin
     # absolute dir
     parsed_dir: str
 
-    # @property
-    # def __post_init__(self):
-    #     if self.valence_bands is None:
-    #         self.valence_bands = [[]]
-    #     if self.conduction_bands is None:
-    #         self.conduction_bands = [[]]
+    @property
+    def full_name(self):
+        return f"{self.name}_{self.charge}"
 
     @property
     def corrected_energy(self):
@@ -109,10 +116,6 @@ class MinimumPointInfo(MSONable):
         return Path(self.parsed_dir)
 
 
-def make_near_edge_states_from_band_edge_orbital_infos():
-    pass
-
-
 @dataclass
 class DephonInit(MSONable, ToJsonFileMixIn):
     """ Information related to configuration coordination diagram.
@@ -126,16 +129,20 @@ class DephonInit(MSONable, ToJsonFileMixIn):
         superell_vbm (float): vbm in the perfect supercell calculation.
         superell_cbm (float): cbm in the perfect supercell calculation.
     """
-    defect_name: str
     min_points: List[MinimumPointInfo]
     vbm: float
     cbm: float
-    supercell_volume: float
     supercell_vbm: float
     supercell_cbm: float
+    supercell_volume: float
     ave_electron_mass: float
     ave_hole_mass: float
     ave_static_diele_const: float
+
+    @property
+    def name(self):
+        return \
+            f"{self.min_points[0].full_name} ⇆ {self.min_points[1].full_name}"
 
     def __post_init__(self):
         assert len(self.min_points) == 2
@@ -169,7 +176,7 @@ class DephonInit(MSONable, ToJsonFileMixIn):
         return (self.dQ / self.dR) ** 2
 
     def __str__(self):
-        result = [f"name: {self.defect_name}"]
+        result = [f"name: {self.name}"]
         table = [["vbm", self.vbm, "supercell vbm", self.supercell_vbm],
                  ["cbm", self.cbm, "supercell cbm", self.supercell_cbm],
                  ["dQ (amu^0.5 Å)", self.dQ],
@@ -184,40 +191,44 @@ class DephonInit(MSONable, ToJsonFileMixIn):
 
         headers = ["q", "ini symm", "final symm", "energy",
                    "correction", "corrected energy", "magnetization",
-                   "localized state idx", "ZPL"]
+                   "localized orbitals", "ZPL"]
         table = []
 
         last_energy = None
 
-        for state in self.min_points:
+        for min_info in self.min_points:
 
             localized_state_idxs = []
-            for s, spin in zip(state.localized_orbitals, ["up", "down"]):
+            for s, spin in zip(min_info.localized_orbitals, ["up", "down"]):
                 for ss in s:
                     localized_state_idxs.append(f"{spin}-{ss.band_idx}")
             table.append(
-                [state.charge, state.initial_site_symmetry,
-                 state.final_site_symmetry, state.energy,
-                 state.correction_energy, state.corrected_energy,
-                 state.magnetization,
-                 ", ".join(localized_state_idxs)])
+                [min_info.charge, min_info.initial_site_symmetry,
+                 min_info.final_site_symmetry, min_info.energy,
+                 min_info.correction_energy, min_info.corrected_energy,
+                 min_info.magnetization,
+                 joined_local_orbitals(min_info.localized_orbitals)])
             if last_energy:
-                table[-1].append(last_energy - state.corrected_energy)
-            last_energy = state.corrected_energy
+                table[-1].append(last_energy - min_info.corrected_energy)
+            last_energy = min_info.corrected_energy
 
         result.append(
             tabulate(table, tablefmt="plain", headers=headers, floatfmt=".3f",
                      stralign="center"))
 
+        result.append("-" * 60)
+
         for min_info in self.min_points:
             result.append(f"- q={min_info.charge}")
-            for vb, spin in zip(min_info.vbm, ["up", "down"]):
+            for vb, spin in zip(min_info.valence_bands, ["up", "down"]):
                 result.append(f"-- VBM spin-{spin}")
-                result.append(str(vb))
+                for v in vb:
+                    result.append(str(v))
             result.append(f"")
-            for cb, spin in zip(min_info.cbm, ["up", "down"]):
+            for cb, spin in zip(min_info.conduction_bands, ["up", "down"]):
                 result.append(f"-- CBM spin-{spin}")
-                result.append(str(cb))
+                for c in cb:
+                    result.append(str(c))
             result.append(f"")
 
         return "\n".join(result)

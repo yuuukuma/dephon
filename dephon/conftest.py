@@ -96,7 +96,8 @@ def dephon_init(ground_structure, excited_structure):
     cb_w_lo = copy(cb)
     cb_w_lo.band_index = 3
 
-    va_o1_0 = MinimumPointInfo(charge=0,
+    va_o1_0 = MinimumPointInfo(name="Va_O1",
+                               charge=0,
                                structure=ground_structure,
                                energy=11.0,
                                correction_energy=-1.0,
@@ -105,9 +106,10 @@ def dephon_init(ground_structure, excited_structure):
                                initial_site_symmetry="2mm",
                                final_site_symmetry="2",
                                parsed_dir="/path/to/Va_O1_0",
-                               vbm=[vb, vb],
-                               cbm=[cb, cb])
-    va_o1_1 = MinimumPointInfo(charge=1,
+                               valence_bands=[[vb], [vb]],
+                               conduction_bands=[[cb], [cb]])
+    va_o1_1 = MinimumPointInfo(name="Va_O1",
+                               charge=1,
                                structure=excited_structure,
                                energy=12.0,
                                correction_energy=-1.0,
@@ -116,10 +118,10 @@ def dephon_init(ground_structure, excited_structure):
                                initial_site_symmetry="2mm",
                                final_site_symmetry="2",
                                parsed_dir="/path/to/Va_O1_1",
-                               vbm=[vb, vb],
-                               cbm=[cb, cb_w_lo])
+                               valence_bands=[[vb], [vb]],
+                               conduction_bands=[[cb], [cb_w_lo]])
     # transition level = -1.0 from CBM
-    return DephonInit(defect_name="Va_O", min_points=[va_o1_0, va_o1_1],
+    return DephonInit(min_points=[va_o1_0, va_o1_1],
                       vbm=1.0, cbm=3.0, supercell_volume=100.0,
                       supercell_vbm=1.1, supercell_cbm=2.9,
                       ave_electron_mass=11.0, ave_hole_mass=12.0,
@@ -128,7 +130,7 @@ def dephon_init(ground_structure, excited_structure):
 
 @pytest.fixture
 def ccd(excited_structure, ground_structure, intermediate_structure):
-    return Ccd(defect_name="test",
+    return Ccd(name="test",
                ccds=[
                    SingleCcd(SingleCcdId(name="excited"), charge=0,
                              point_infos=[SinglePointInfo(-1.0, -0.1, 2.1, False, used_for_fitting=True),
@@ -149,9 +151,9 @@ def sc_structure():
 
 @pytest.fixture
 def e_p_matrix_elem():
-    ip_1 = InnerProduct(inner_product=20.0, used_for_fitting=False)
-    ip_2 = InnerProduct(inner_product=1.0, used_for_fitting=True)
-    ip_3 = InnerProduct(inner_product=2.0, used_for_fitting=True)
+    ip_1 = InnerProduct(abs_inner_product=20.0, used_for_fitting=False)
+    ip_2 = InnerProduct(abs_inner_product=1.0, used_for_fitting=True)
+    ip_3 = InnerProduct(abs_inner_product=2.0, used_for_fitting=True)
 
     return EPMatrixElement(defect_band_index=2,
                            spin=Spin.down,
