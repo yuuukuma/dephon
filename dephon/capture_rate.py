@@ -15,53 +15,50 @@ from dephon.config_coord import SingleCcd
 @dataclass
 class CaptureRate(MSONable, ToJsonFileMixIn):
     Wif: float
-    phonon_overlaps: List[float]  # as a function of temperature
+    summed_phonon_overlaps: List[float]  # as a function of temperature
     temperatures: List[float]
-    degeneracy: float
-    volume: float
+    site_degeneracy: float
+    spin_selection_factor: float
+#    velocity: float  # characteristic carrier velocity in [cm / s]
+    volume: float  # in [cm3]
 
     @property
     def capture_rate(self) -> np.array:
-        return (2 * np.pi * self.degeneracy * self.Wif ** 2 * self.volume
-                * np.array(self.phonon_overlaps))
+        return (2 * np.pi * self.site_degeneracy * self.Wif ** 2 * self.volume
+                * np.array(self.summed_phonon_overlaps))
 
     def __str__(self):
-        result = []
-        aaa = [["Wif:", self.Wif],
-               ["degeneracy:", self.degeneracy],
-               ["volume (Å):", self.volume],
-               [result.append("phonon overlap:")]]
+        aaa = [["Wif:", f"{self.Wif:.1e}"],
+               ["site degeneracy:", f"{self.site_degeneracy}"],
+               ["spin selection factor:", f"{self.spin_selection_factor}"],
+               ["volume (Å):", f"{self.volume}"]]
 
-        result.append(tabulate(aaa, tablefmt="plain", floatfmt=".3f"))
+        result = [tabulate(aaa, tablefmt="plain")]
 
-        phonon_overlaps = []
-        for T, omega in zip(self.temperatures, self.phonon_overlaps):
-            phonon_overlaps.append([T, omega])
-        result.append(tabulate(phonon_overlaps,
-                               headers=["K", "THz"],
-                               tablefmt="plain", floatfmt=".3f"))
-        result.append("-" * 50)
-        result.append(f"capture rate:")
+        table = []
+        for T, omega, rate in zip(self.temperatures, self.summed_phonon_overlaps, self.capture_rate):
+            table.append([T, omega, rate])
+        result.append(tabulate(table,
+                               headers=["K", "THz", "capture coeff [cm3/s]"],
+                               tablefmt="plain", floatfmt=[".1f", ".3f", ".1e"]))
 
-        cap_rates = []
-        for T, rate in zip(self.temperatures, self.capture_rate):
-            cap_rates.append([T, rate])
-        result.append(tabulate(phonon_overlaps,
-                               headers=["K", "XXX"],
-                               tablefmt="plain", floatfmt=".3f"))
         return "\n".join(result)
 
 
 def calc_phonon_overlaps(ground_ccd: SingleCcd,
                          excited_ccd: SingleCcd,
                          T: List[float]):
-    result = get_C(dQ=abs(excited_ccd.ground_point_info.dQ
-                          - ground_ccd.ground_point_info.dQ),
-                   dE=(excited_ccd.ground_point_info.corrected_energy
-                       - ground_ccd.ground_point_info.corrected_energy),
+    dQ = excited_ccd.ground_point_info.dQ - ground_ccd.ground_point_info.dQ
+
+    dE = (excited_ccd.ground_point_info.corrected_energy
+          - ground_ccd.ground_point_info.corrected_energy)
+
+    result = get_C(dQ=abs(dQ),
+                   dE=dE,
                    wi=ground_ccd.omega(),
                    wf=excited_ccd.omega(),
                    T=np.array(T),
                    Wif=1, volume=1, g=1)
+    print(result)
     return list(result)
 

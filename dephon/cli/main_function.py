@@ -6,7 +6,10 @@ from pathlib import Path
 from typing import List, Tuple
 
 import yaml
+from matplotlib import pyplot as plt
 from monty.serialization import loadfn
+from nonrad.elphon import _read_WSWQ
+from numpy.linalg import LinAlgError
 from pydefect.analyzer.band_edge_states import BandEdgeStates, \
     BandEdgeOrbitalInfos
 from pydefect.analyzer.calc_results import CalcResults
@@ -21,10 +24,12 @@ from vise.input_set.prior_info import PriorInfo
 from vise.util.file_transfer import FileLink
 from vise.util.logger import get_logger
 
+from dephon.capture_rate import calc_phonon_overlaps, CaptureRate
 from dephon.config_coord import SinglePointInfo, CcdPlotter, \
     SingleCcd, SingleCcdId
 from dephon.corrections import DephonCorrection
 from dephon.dephon_init import DephonInit, MinimumPointInfo, BandEdgeState
+from dephon.ele_phon_coupling import EPMatrixElement
 from dephon.enum import CorrectionType
 from dephon.make_config_coord import MakeCcd
 from dephon.make_e_p_matrix_element import MakeEPMatrixElement
@@ -94,7 +99,10 @@ def get_orbs(band_edge_orbital_infos: BandEdgeOrbitalInfos,
              ) -> Tuple[List, List, List]:
     localized_orbitals, valence_bands, conduction_bands = [], [], []
     for state, spin in zip(band_edge_states.states, [Spin.up, Spin.down]):
-        localized_orbitals.append(state.localized_orbitals)
+        los = state.localized_orbitals
+        for lo in los:
+            lo.band_idx += 1
+        localized_orbitals.append(los)
         valence_bands.append(make_near_edge_states(band_edge_orbital_infos,
                                                    spin,
                                                    state.vbm_info.energy))
@@ -128,6 +136,13 @@ def make_dephon_init(args: Namespace):
                              )
 
     path = Path(f"cc/{min_point_1.full_name}__{min_point_2.full_name}")
+
+    vise_yaml = (path / "vise.yaml")
+    if vise_yaml.exists() is False:
+        vise_yaml.write_text("""task: defect
+user_incar_settings:
+  NSW: 1""")
+
     if path.exists() is False:
         path.mkdir(parents=True)
 
@@ -295,39 +310,58 @@ def _make_wswq_dir(dir_, dephon_init: DephonInit):
 
 
 def make_e_p_matrix_element(args: Namespace):
+    dQ_wswq_pairs = []
+    for d in args.dirs:
+        wswq_file = d / "wswq" / "WSWQ"
+        single_point_info = loadfn(d / "single_point_info.json")
+        dQ_wswq_pairs.append((single_point_info.dQ, _read_WSWQ(wswq_file)))
+
     make_e_p_matrix_elem = MakeEPMatrixElement(
-        base_disp_ratio=args.disp,
-        single_ccd=args.ccd,
+        base_disp_ratio=args.base_disp,
+        single_ccd=args.single_ccd,
         captured_carrier=args.captured_carrier,
         band_edge_index=args.band_edge_index,
         defect_band_index=args.defect_band_index,
         kpoint_index=args.kpoint_index,
         spin=args.spin,
-        wswqs=args.wswq_files)
+        dQ_wswq_pairs=dQ_wswq_pairs)
     e_p_matrix_elem = make_e_p_matrix_elem.make()
     print(e_p_matrix_elem)
     e_p_matrix_elem.to_json_file()
 
+    try:
+        e_p_matrix_elem.e_p_matrix_element(plt.gca())
+        plt.show()
+        plt.savefig(f"e_p_matrix_element_{e_p_matrix_elem.index_info}.pdf")
+    except (TypeError, LinAlgError):
+        logger.info("e-ph matrix element cannot be calculated.")
 
-# def make_capture_rate(args: Namespace):
-#     dephon_init: DephonInit = args.dephon_init
-#     ccd: Ccd = args.ccd
-#     e_p_coupling: EPCoupling = args.e_p_coupling
-#     temperatures: List[float] = args.temperatures
 
-    # carrier = e_p_coupling.captured_carrier
-    # i_ccd, f_ccd = ccd.initial_and_final_ccd_from_captured_carrier(carrier)
-    # i_min_info = dephon_init.min_info_from_charge(i_ccd.charge)
-    # f_min_info = dephon_init.min_info_from_charge(f_ccd.charge)
-    # i_deg = i_min_info.degeneracy_by_symmetry_reduction
-    # f_deg = f_min_info.degeneracy_by_symmetry_reduction
+def make_capture_rate(args: Namespace):
+    dephon_init: DephonInit = args.dephon_init
+    e_p_matrix_elem: EPMatrixElement = args.e_p_matrix_elem
+    if e_p_matrix_elem.e_p_matrix_element is None:
+        raise ValueError
 
-    # phonon_overlaps = calc_phonon_overlaps(i_ccd, f_ccd, temperatures)
+    carrier = args.e_p_matrix_elem.captured_carrier
+    f_ccd, i_ccd = args.ccd.initial_and_final_ccd_from_captured_carrier(carrier)
+    print(i_ccd)
+    print(f_ccd)
 
-    # cap_rate = CaptureRate(Wif=e_p_coupling.wif,
-    #                        phonon_overlaps=phonon_overlaps,
-    #                        temperatures=temperatures,
-    #                        degeneracy=f_deg / i_deg,
-    #                        volume=e_p_coupling.volume)
-    # print(cap_rate)
-    # cap_rate.to_json_file()
+    i_min_info = dephon_init.min_info_from_charge(i_ccd.charge)
+    f_min_info = dephon_init.min_info_from_charge(f_ccd.charge)
+    i_deg = i_min_info.degeneracy_by_symmetry_reduction
+    f_deg = f_min_info.degeneracy_by_symmetry_reduction
+
+    phonon_overlaps = calc_phonon_overlaps(i_ccd, f_ccd, args.temperatures)
+
+    spin_factor = 0.5 if i_min_info.is_spin_polarized else 1.0
+
+    cap_rate = CaptureRate(Wif=e_p_matrix_elem.e_p_matrix_element(),
+                           summed_phonon_overlaps=phonon_overlaps,
+                           temperatures=args.temperatures,
+                           site_degeneracy=f_deg / i_deg,
+                           spin_selection_factor=spin_factor,
+                           volume=dephon_init.volume)
+    print(cap_rate)
+    cap_rate.to_json_file()

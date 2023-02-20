@@ -1,13 +1,13 @@
 # -*- coding: utf-8 -*-
 #  Copyright (c) 2022 Kumagai group.
 from dataclasses import dataclass, field
-from typing import Union, Dict, Optional
+from typing import Union, Dict
 
 import numpy as np
 from monty.json import MSONable
-from numpy.linalg import LinAlgError
 from pymatgen.electronic_structure.core import Spin
 from tabulate import tabulate
+from vise.util.mix_in import ToJsonFileMixIn
 
 from dephon.enum import Carrier
 from dephon.util import spin_to_idx
@@ -25,7 +25,7 @@ class InnerProduct(MSONable):
 
 
 @dataclass
-class EPMatrixElement(MSONable):
+class EPMatrixElement(MSONable, ToJsonFileMixIn):
     """ Electron-phonon (E-P) matrix element between defect band and band edge
 
     The phonon mode is only 1D mode.
@@ -56,6 +56,17 @@ class EPMatrixElement(MSONable):
         self.inner_products = \
             {float(k): v for k, v in self.inner_products.items()}
 
+    @property
+    def _json_filename(self):
+        return self._filename + "_" + self.index_info + ".json"
+
+    @property
+    def index_info(self):
+        return "_".join([f"b{self.band_edge_index}",
+                         f"d{self.defect_band_index}",
+                         f"k{self.kpt_idx}",
+                         str(self.spin)])
+
     def as_dict(self) -> dict:
         result = super().as_dict()
         result["spin"] = result["spin"].name
@@ -77,21 +88,18 @@ class EPMatrixElement(MSONable):
     def _inner_prod_vs_q(self):
         return self.dQs, self.inner_prods
 
-    def e_p_matrix_element(self, ax=None) -> Optional[float]:
+    def e_p_matrix_element(self, ax=None) -> float:
         """ Evaluated by computing the slope of inner products"""
-        try:
-            grad, const = np.polyfit(self.dQs, self.inner_prods, 1)
+        grad, const = np.polyfit(self.dQs, self.inner_prods, 1)
 
-            if ax:
-                ax.scatter(self.dQs, self.inner_prods)
+        if ax:
+            ax.scatter(self.dQs, self.inner_prods)
 
-                x = np.arange(min(self.dQs), max(self.dQs), 0.01)
-                y = x * grad + const
-                ax.plot(x, y, alpha=0.5)
+            x = np.arange(min(self.dQs), max(self.dQs), 0.01)
+            y = x * grad + const
+            ax.plot(x, y, alpha=0.5)
 
-            return grad
-        except (TypeError, LinAlgError):
-            return None
+        return grad
 
     def __str__(self):
         result = []
@@ -99,7 +107,7 @@ class EPMatrixElement(MSONable):
                  ["defect band index", self.defect_band_index],
                  ["spin", self.spin.name],
                  ["eigenvalue difference", round(self.eigenvalue_diff, 3)],
-                 ["kpoint coord", self.kpt_coord],
+                 ["kpoint index", self.kpt_idx],
                  ["e-p matrix element", self.e_p_matrix_element()]]
 
         result.append(tabulate(table, tablefmt="plain", floatfmt=".3f"))

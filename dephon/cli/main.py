@@ -7,11 +7,14 @@ from pathlib import Path
 
 from monty.serialization import loadfn
 from pydefect.cli.main import add_sub_parser
+from pymatgen.electronic_structure.core import Spin
 from pymatgen.io.vasp.inputs import UnknownPotcarWarning
 
 from dephon.cli.main_function import make_dephon_init, make_ccd, \
     make_ccd_dirs, plot_ccd, plot_eigenvalues, set_quadratic_fitting_q_range, \
-    make_wswq_dirs, update_single_point_infos, add_point_infos_to_single_ccd
+    make_wswq_dirs, update_single_point_infos, add_point_infos_to_single_ccd, \
+    make_e_p_matrix_element, make_capture_rate
+from dephon.enum import Carrier
 from dephon.version import __version__
 
 warnings.simplefilter('ignore', UnknownPotcarWarning)
@@ -72,11 +75,11 @@ def parse_args_main(args):
 
     parser_add_ccd_dirs.add_argument(
         "-fsr", "--first_to_second_div_ratios", type=float, nargs="+",
-        default=[-0.2, 0.0, 0.2, 0.4, 0.6, 0.8],
+        default=[-0.2, 0.0, 0.2, 0.4, 0.6, 0.8, 1.0],
         help="Dividing ratios from first to second charge state structures.")
     parser_add_ccd_dirs.add_argument(
         "-sfr", "--second_to_first_div_ratios", type=float, nargs="+",
-        default=[-0.2, 0.0, 0.2, 0.4, 0.6, 0.8],
+        default=[-0.2, 0.0, 0.2, 0.4, 0.6, 0.8, 1.0],
         help="Dividing ratios from second to first charge state structures.")
     parser_add_ccd_dirs.add_argument(
         "-d", "--calc_dir", type=Path, default=Path.cwd(),
@@ -108,7 +111,7 @@ def parse_args_main(args):
                     "pydefect.",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
         parents=[dirs],
-        aliases=['msc'])
+        aliases=['apsc'])
 
     parser_make_single_ccd.set_defaults(func=add_point_infos_to_single_ccd)
 
@@ -202,35 +205,50 @@ def parse_args_main(args):
         "--dirs", type=Path, nargs="+", default=[])
 
     parser_make_wswq_dirs.set_defaults(func=make_wswq_dirs)
-    #
-    # # -- update_e_p_coupling -----------------------------------
-    # parser_update_e_p_coupling = subparsers.add_parser(
-    #     name="update_e_p_coupling",
-    #     description="Make directories for calculating WSWQ files.",
-    #     formatter_class=argparse.ArgumentDefaultsHelpFormatter,
-    #     aliases=['mwd'])
-    #
-    # parser_update_e_p_coupling.add_argument(
-    #     "--e_p_coupling_filename", type=Path, default="dephon_init.json")
-    # parser_update_e_p_coupling.add_argument(
-    #     "--dirs", type=Path, nargs="+", default=[])
-    #
-    # parser_update_e_p_coupling.set_defaults(func=update_e_p_coupling)
-    #
-    # # -- make_capture_rate -----------------------------------
-    # parser_make_capture_rate = subparsers.add_parser(
-    #     name="make_capture_rate",
-    #     description="Make directories for calculating WSWQ files.",
-    #     parents=[dephon_init, ccd],
-    #     formatter_class=argparse.ArgumentDefaultsHelpFormatter,
-    #     aliases=['mcr'])
-    #
-    # parser_make_capture_rate.add_argument(
-    #     "--e_p_coupling", type=loadfn, required=True)
-    # parser_make_capture_rate.add_argument(
-    #     "-t", "--temperatures", type=float, nargs="+")
-    #
-    # parser_make_capture_rate.set_defaults(func=make_capture_rate)
+
+    # -- make_e_p_matrix_element -----------------------------------
+    parser_make_e_p_matrix_element = subparsers.add_parser(
+        name="make_e_p_matrix_element",
+        description="Make directories for calculating WSWQ files.",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+        aliases=['mepme'])
+
+    parser_make_e_p_matrix_element.add_argument(
+        "--base_disp", type=float, required=True,
+        help="Base displacement that must exist in single_ccd.json file.")
+    parser_make_e_p_matrix_element.add_argument(
+        "--single_ccd", type=loadfn, required=True,
+        help="single_ccd.json filename.")
+    parser_make_e_p_matrix_element.add_argument(
+        "--captured_carrier", type=Carrier)
+    parser_make_e_p_matrix_element.add_argument(
+        "--band_edge_index", type=int, required=True)
+    parser_make_e_p_matrix_element.add_argument(
+        "--defect_band_index", type=int, required=True)
+    parser_make_e_p_matrix_element.add_argument(
+        "--kpoint_index", type=int, required=True)
+    parser_make_e_p_matrix_element.add_argument(
+        "--spin", type=Spin.__getattr__, required=True)
+    parser_make_e_p_matrix_element.add_argument(
+        "--dirs", type=Path, nargs="+", required=True)
+
+    parser_make_e_p_matrix_element.set_defaults(func=make_e_p_matrix_element)
+
+    # -- make_capture_rate -----------------------------------
+    parser_make_capture_rate = subparsers.add_parser(
+        name="make_capture_rate",
+        description="Make directories for calculating WSWQ files.",
+        parents=[dephon_init, ccd],
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+        aliases=['mcr'])
+
+    parser_make_capture_rate.add_argument(
+        "--e_p_matrix_elem", type=loadfn, required=True)
+    parser_make_capture_rate.add_argument(
+        "-t", "--temperatures", type=float, nargs="+",
+        default=[t for t in range(40, 820, 20)])
+
+    parser_make_capture_rate.set_defaults(func=make_capture_rate)
     # ------------------------------------------------------------------------
     return parser.parse_args(args)
 

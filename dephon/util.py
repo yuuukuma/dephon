@@ -2,7 +2,7 @@
 #  Copyright (c) 2022 Kumagai group.
 import re
 from pathlib import Path
-from typing import List, Dict, Tuple
+from typing import List
 
 from pymatgen.electronic_structure.core import Spin
 
@@ -18,16 +18,22 @@ def idx_to_spin(idx: int):
     return Spin.up if idx == 0 else Spin.down
 
 
-def reduce_wswq(filename: Path, orbitals: Dict[Tuple[int, int], List[int]]):
+def reduce_wswq(filename: Path, orbs: List[int]) -> None:
+    """
+
+    Args:
+        filename: WSWQ filename
+        orbs: list of relevant band indices
+
+    Returns:
+        None
+    """
     lines = []
     with filename.open(mode='r') as f:
         for line in f:
             header = re.search(r'\s*spin=(\d+), kpoint=\s*(\d+)', line)
             if header:
-                spin_kpt = (int(header.group(1)), int(header.group(2)))
-                if spin_kpt in orbitals:
-                    lines.append(line)
-                    orbs = orbitals[spin_kpt]
+                lines.append(line)
             else:
                 _append_ij(line, orbs, lines)
 

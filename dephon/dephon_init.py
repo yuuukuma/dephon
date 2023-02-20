@@ -14,6 +14,8 @@ from vise.util.logger import get_logger
 from vise.util.mix_in import ToJsonFileMixIn
 from vise.util.structure_symmetrizer import num_sym_op
 
+from dephon.enum import Carrier
+
 logger = get_logger(__name__)
 
 
@@ -115,6 +117,24 @@ class MinimumPointInfo(MSONable):
     def dir_path(self):
         return Path(self.parsed_dir)
 
+    @property
+    def is_spin_polarized(self):
+        return abs(self.magnetization) > 0.95
+
+    @property
+    def relevant_band_indices(self):
+        result = set()
+
+        def add(bands):
+            for i in bands:
+                for j in i:
+                    result.add(j.band_index)
+
+        add(self.valence_bands)
+        add(self.localized_orbitals)
+        add(self.conduction_bands)
+        return result
+
 
 @dataclass
 class DephonInit(MSONable, ToJsonFileMixIn):
@@ -150,6 +170,11 @@ class DephonInit(MSONable, ToJsonFileMixIn):
     @property
     def band_gap(self):
         return self.cbm - self.vbm
+
+    def velocity(self, carrier: Carrier):
+        if carrier is Carrier.e:
+            return 1 / self.ave_electron_mass
+        return 1 / self.ave_hole_mass
 
     def min_info_from_charge(self, charge: int):
         for state in self.min_points:

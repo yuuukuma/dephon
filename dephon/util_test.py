@@ -58,8 +58,7 @@ i=     3, j=     4 :     0.000000101     0.000000000
 i=     4, j=     4 :     0.000000101     0.000000000
 """
     Path("WSWQ").write_text(text)
-    reduce_wswq(filename=Path("WSWQ"), orbitals={(1, 1): [2, 3],
-                                                 (2, 1): [2, 3]})
+    reduce_wswq(filename=Path("WSWQ"), orbs=[2, 3])
     actual = Path("WSWQ").read_text()
 
     expected = """   spin=1, kpoint=     1

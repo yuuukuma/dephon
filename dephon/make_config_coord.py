@@ -101,7 +101,12 @@ class MakeCcd:
                  carrier. The Q values are reverted and zero is set to that of
                  ground state ccd.
         """
-        result = self.orig_excited_ccd.dQ_reverted_single_ccd()
+        try:
+            result = self.orig_excited_ccd.dQ_reverted_single_ccd()
+        except ValueError:
+            logger.warning("disp=1.0 is required for excited state.")
+            raise
+
         result.set_base_energy(self.ref_energy)
         result.id_ = SingleCcdId(
             "excited", carriers=[self.carrier_coexisting_with_excited])

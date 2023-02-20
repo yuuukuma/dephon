@@ -26,7 +26,7 @@ class MakeEPMatrixElement:
                  defect_band_index: int,
                  kpoint_index: int,
                  spin: Spin,
-                 wswqs: List[Tuple[float, wswq_type]],
+                 dQ_wswq_pairs: List[Tuple[float, wswq_type]],
                  ):
         self.charge = single_ccd.charge
         self.base_disp_ratio = base_disp_ratio
@@ -46,10 +46,11 @@ class MakeEPMatrixElement:
 
         self.spin = spin
         self.kpt_index = kpoint_index
-        self.wswqs = wswqs
+        self.dQ_wswq_pairs = dQ_wswq_pairs
 
     def make(self):
-        ip = {dQ: self._add_inner_products(wswq) for dQ, wswq in self.wswqs}
+        inner_prods = {dQ: self._add_inner_products(wswq)
+                       for dQ, wswq in self.dQ_wswq_pairs}
         return EPMatrixElement(charge=self.charge,
                                base_disp_ratio=self.base_disp_ratio,
                                captured_carrier=self.captured_carrier,
@@ -58,14 +59,14 @@ class MakeEPMatrixElement:
                                spin=self.spin,
                                eigenvalue_diff=self.energy_diff,
                                kpt_idx=self.kpt_index,
-                               inner_products=ip)
+                               inner_products=inner_prods)
 
     def _add_inner_products(self, wswq: wswq_type):
         """    Returns
         -------
         dict(dict)
-            a dict of dicts that takes keys (spin, kpoint) and (initial, final) as
-            indices and maps it to a complex number"""
+            a dict of dicts that takes keys (spin, kpoint) and (initial, final)
+            as indices and maps it to a complex number"""
         spin_kpt_pair = (spin_to_idx(self.spin, True), self.kpt_index)
         band_indices = (self.band_edge_index, self.defect_band_index)
         braket = np.abs(wswq[spin_kpt_pair][tuple(band_indices)])

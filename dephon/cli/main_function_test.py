@@ -8,17 +8,19 @@ from pathlib import Path
 from monty.serialization import loadfn
 from pydefect.analyzer.unitcell import Unitcell
 from pymatgen.core import Structure
+from pymatgen.electronic_structure.core import Spin
 from vise.input_set.incar import ViseIncar
 from vise.input_set.prior_info import PriorInfo
 
 from dephon.cli.main_function import make_dephon_init, make_ccd, plot_ccd, \
     make_ccd_dirs, make_wswq_dirs, update_single_point_infos, \
     add_point_infos_to_single_ccd, plot_eigenvalues, \
-    set_quadratic_fitting_q_range
+    set_quadratic_fitting_q_range, make_e_p_matrix_element
 from dephon.config_coord import SinglePointInfo, Ccd
 from dephon.corrections import DephonCorrection
 from dephon.dephon_init import DephonInit, MinimumPointInfo, BandEdgeState
-from dephon.enum import CorrectionType
+from dephon.ele_phon_coupling import EPMatrixElement
+from dephon.enum import CorrectionType, Carrier
 
 
 def test_make_dephon_init(test_files, tmpdir):
@@ -263,25 +265,43 @@ def test_make_wswq_dirs(tmpdir, mocker):
 
     assert Path("excited/disp_-0.2/wswq/KPOINTS").exists() is False
 
-#
-# def test_update_e_p_coupling(tmpdir, test_files):
-#     print(tmpdir)
-#     tmpdir.chdir()
-#     orig = test_files / "NaP/Va_P1_-1__Va_P1_0/from_0_to_-1_after_make_single_point_infos/e_p_coupling.json"
-#     shutil.copyfile(orig, tmpdir / "e_p_coupling.json")
-#     args = Namespace(e_p_coupling_filename=tmpdir / "e_p_coupling.json",
-#                      dirs=[test_files / "NaP/Va_P1_-1__Va_P1_0/from_0_to_-1_after_make_single_point_infos/disp_0.2"])
-#
-#     update_e_p_coupling(args)
-#     actual: EPCoupling = loadfn(orig)
-#     print(actual)
-# #    expected.e_p_matrix_elements = {DefectBandId(765, Spin.down): {}}
-#
-# #    assert loadfn("e_p_coupling.json") == e_p_coupling
+
+def test_make_e_p_matrix_element(tmpdir, test_files):
+    print(tmpdir)
+    tmpdir.chdir()
+    dir_ = test_files / "NaP/Va_P1_-1__Va_P1_0/from_0_to_-1_after_make_single_point_infos"
+    args = Namespace(base_disp=0.0,
+                     single_ccd=loadfn(dir_/"single_ccd.json"),
+                     captured_carrier=Carrier.e,
+                     band_edge_index=767,
+                     defect_band_index=766,
+                     kpoint_index=1,
+                     spin=Spin.down,
+                     dirs=[dir_/"disp_0.0", dir_/"disp_0.1"])
+#    dirs=[dir_/"disp_0.0", dir_/"disp_0.1", dir_/"disp_0.2"])
+
+    make_e_p_matrix_element(args)
+    actual: EPMatrixElement = loadfn("e_p_matrix_element.json")
+    print(actual)
 
 
+def test_make_capture_rate(tmpdir, test_files):
+    print(tmpdir)
+    tmpdir.chdir()
+    dir_ = test_files / "NaP/Va_P1_-1__Va_P1_0/from_0_to_-1_after_make_single_point_infos"
+    args = Namespace(base_disp=0.0,
+                     single_ccd=loadfn(dir_/"single_ccd.json"),
+                     captured_carrier=Carrier.e,
+                     band_edge_index=767,
+                     defect_band_index=766,
+                     kpoint_index=1,
+                     spin=Spin.down,
+                     dirs=[dir_/"disp_0.0", dir_/"disp_0.1"])
+    #    dirs=[dir_/"disp_0.0", dir_/"disp_0.1", dir_/"disp_0.2"])
 
-
+    make_e_p_matrix_element(args)
+    actual: EPMatrixElement = loadfn("e_p_matrix_element.json")
+    print(actual)
 """
 TODO:
 . Check if electronic SCF are converged.

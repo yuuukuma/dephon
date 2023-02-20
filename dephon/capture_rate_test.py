@@ -8,9 +8,10 @@ from dephon.capture_rate import CaptureRate
 @pytest.fixture
 def capture_rate():
     return CaptureRate(Wif=1.23456,
-                       phonon_overlaps=[0.1234, 1.1234, 2.1234],
-                       temperatures=[100, 200, 300],
-                       degeneracy=4.0,
+                       summed_phonon_overlaps=[0.1234, 1.1234, 2.1234],
+                       temperatures=[100.01234, 200, 300],
+                       site_degeneracy=4.0,
+                       spin_selection_factor=0.5,
                        volume=1000.1234)
 
 

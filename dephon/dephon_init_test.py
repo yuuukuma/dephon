@@ -58,7 +58,11 @@ def minimum_point_info(ground_structure):
                             parsed_dir="/path/to/min_point")
 
 
-def test_(minimum_point_info):
+def test_relevant_band_indices(minimum_point_info):
+    assert minimum_point_info.relevant_band_indices == {(): [1, 2, 3]}
+
+
+def test_str(minimum_point_info):
     print(minimum_point_info)
 
 

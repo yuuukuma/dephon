@@ -117,6 +117,14 @@ class SingleCcd(MSONable, ToJsonFileMixIn):
             self.point_infos.sort(key=lambda x: x.dQ)
         elif self.point_infos is None:
             self.point_infos = []
+        if self.point_infos and self.point_infos[0].base_energy == 0.0:
+            cor_energies = [point_info.corrected_energy
+                            for point_info in self.point_infos
+                            if point_info.corrected_energy]
+            if cor_energies:
+                min_e = min(cor_energies)
+                for point_info in self.point_infos:
+                    point_info.base_energy = min_e
 
     @property
     def name(self):
@@ -164,12 +172,16 @@ class SingleCcd(MSONable, ToJsonFileMixIn):
             energies.append(imag.relative_energy)
         return dQs, energies
 
-    def omega(self, ax: Axes = None,
+    def omega(self,
+              ax: Axes = None,
               plot_q_range: Optional[List[float]] = None):
+
         dQs, energies = self.dQs_and_energies(True)
+
         if len(dQs) < 3:
             raise ValueError("The number of Q points is not sufficient for "
                              "calculating omega.")
+
         q = np.linspace(plot_q_range[0], plot_q_range[1], 1000) \
             if plot_q_range else None
 

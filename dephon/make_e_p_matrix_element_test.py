@@ -80,8 +80,8 @@ def make_e_p_coupling_h_capture(single_ccd):
                                defect_band_index=102,
                                kpoint_index=1,
                                spin=Spin.up,
-                               wswqs=[(0.0, {(1, 1): {(101, 102): 3.0 + 4.0j}}),
-                                      (0.1, {(1, 1): {(101, 102): 30.0 + 40.0j}})])
+                               dQ_wswq_pairs=[(0.0, {(1, 1): {(101, 102): 3.0 + 4.0j}}),
+                                              (0.1, {(1, 1): {(101, 102): 30.0 + 40.0j}})])
 
 
 def test_make_e_p_matrix_element(make_e_p_coupling_h_capture):

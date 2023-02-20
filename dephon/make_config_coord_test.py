@@ -12,7 +12,8 @@ band_edges = dict(vbm=1.0, cbm=3.0, supercell_vbm=1.1, supercell_cbm=2.9)
 
 @pytest.fixture
 def dephon_init(ground_structure, excited_structure):
-    va_o1_0 = MinimumPointInfo(charge=0,
+    va_o1_0 = MinimumPointInfo(name="Va_O",
+                               charge=0,
                                structure=ground_structure,
                                energy=11.0,
                                correction_energy=-1.0,
@@ -24,7 +25,8 @@ def dephon_init(ground_structure, excited_structure):
                                valence_bands=[[]],
                                conduction_bands=[[]]
                                )
-    va_o1_1 = MinimumPointInfo(charge=1,
+    va_o1_1 = MinimumPointInfo(name="Va_O",
+                               charge=1,
                                structure=excited_structure,
                                energy=12.0,
                                correction_energy=-1.0,
@@ -33,12 +35,11 @@ def dephon_init(ground_structure, excited_structure):
                                initial_site_symmetry="2mm",
                                final_site_symmetry="2",
                                parsed_dir="/path/to/Va_O1_1",
-                               vbm=[],
-                               cbm=[]
+                               valence_bands=[],
+                               conduction_bands=[]
                                )
     # transition level = -1.0 from CBM
-    return DephonInit(defect_name="Va_O",
-                      min_points=[va_o1_0, va_o1_1],
+    return DephonInit(min_points=[va_o1_0, va_o1_1],
                       supercell_volume=10.0,
                       ave_electron_mass=1.0, ave_hole_mass=1.0,
                       ave_static_diele_const=1.0,
@@ -71,7 +72,7 @@ def test_make_ccd(excited_structure, ground_structure, dephon_init):
                                                      **common)])
 
     actual = MakeCcd(ground, excited, dephon_init).ccd
-    expected = Ccd(defect_name="Va_O", ccds=[
+    expected = Ccd(name="Va_O", ccds=[
         SingleCcd(SingleCcdId(name="ground"),
                   charge=0,
                   point_infos=[SinglePointInfo(dQ=0.0,
