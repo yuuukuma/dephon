@@ -16,10 +16,10 @@ from dephon.config_coord import SingleCcd
 class CaptureRate(MSONable, ToJsonFileMixIn):
     Wif: float
     summed_phonon_overlaps: List[float]  # as a function of temperature
+    velocities: List[float]  # characteristic carrier velocity in [cm / s]
     temperatures: List[float]
     site_degeneracy: float
     spin_selection_factor: float
-#    velocity: float  # characteristic carrier velocity in [cm / s]
     volume: float  # in [cm3]
 
     @property
@@ -28,19 +28,25 @@ class CaptureRate(MSONable, ToJsonFileMixIn):
                 * np.array(self.summed_phonon_overlaps))
 
     def __str__(self):
-        aaa = [["Wif:", f"{self.Wif:.1e}"],
-               ["site degeneracy:", f"{self.site_degeneracy}"],
-               ["spin selection factor:", f"{self.spin_selection_factor}"],
-               ["volume (Å):", f"{self.volume}"]]
+        header = [["Wif:", f"{self.Wif:.1e}"],
+                  ["site degeneracy:", f"{self.site_degeneracy}"],
+                  ["spin selection factor:", f"{self.spin_selection_factor}"],
+                  ["volume (Å):", f"{self.volume}"]]
 
-        result = [tabulate(aaa, tablefmt="plain")]
+        result = [tabulate(header, tablefmt="plain")]
 
         table = []
-        for T, omega, rate in zip(self.temperatures, self.summed_phonon_overlaps, self.capture_rate):
-            table.append([T, omega, rate])
-        result.append(tabulate(table,
-                               headers=["K", "THz", "capture coeff [cm3/s]"],
-                               tablefmt="plain", floatfmt=[".1f", ".3f", ".1e"]))
+        columns = ["T [K]", "Phonon overlap []", "C [cm3/s]", "v [cm2/s]",
+                   " [cm2]"],
+        for T, phonon_overlap, rate, v in zip(self.temperatures,
+                                              self.summed_phonon_overlaps,
+                                              self.capture_rate,
+                                              self.velocities):
+            table.append([T, phonon_overlap, rate, v, phonon_overlap / v])
+
+        result.append(
+            tabulate(table, headers=columns, tablefmt="plain",
+                     floatfmt=[".1f", ".1e", ".1e", ".1e", ".1e"]))
 
         return "\n".join(result)
 
@@ -53,6 +59,7 @@ def calc_phonon_overlaps(ground_ccd: SingleCcd,
     dE = (excited_ccd.ground_point_info.corrected_energy
           - ground_ccd.ground_point_info.corrected_energy)
 
+    # at Wif=1, volume=1Å^3, g=1
     result = get_C(dQ=abs(dQ),
                    dE=dE,
                    wi=ground_ccd.omega(),

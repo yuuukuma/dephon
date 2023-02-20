@@ -159,6 +159,11 @@ class DephonInit(MSONable, ToJsonFileMixIn):
     ave_hole_mass: float
     ave_static_diele_const: float
 
+    def effective_mass(self, carrier: Carrier):
+        if carrier is Carrier.e:
+            return self.ave_electron_mass
+        return self.ave_hole_mass
+
     @property
     def name(self):
         return \
@@ -171,10 +176,6 @@ class DephonInit(MSONable, ToJsonFileMixIn):
     def band_gap(self):
         return self.cbm - self.vbm
 
-    def velocity(self, carrier: Carrier):
-        if carrier is Carrier.e:
-            return 1 / self.ave_electron_mass
-        return 1 / self.ave_hole_mass
 
     def min_info_from_charge(self, charge: int):
         for state in self.min_points:

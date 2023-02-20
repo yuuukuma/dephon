@@ -5,10 +5,12 @@ from argparse import Namespace
 from pathlib import Path
 from typing import List, Tuple
 
+import numpy as np
 import yaml
 from matplotlib import pyplot as plt
 from monty.serialization import loadfn
 from nonrad.elphon import _read_WSWQ
+from nonrad.scaling import thermal_velocity
 from numpy.linalg import LinAlgError
 from pydefect.analyzer.band_edge_states import BandEdgeStates, \
     BandEdgeOrbitalInfos
@@ -137,14 +139,15 @@ def make_dephon_init(args: Namespace):
 
     path = Path(f"cc/{min_point_1.full_name}__{min_point_2.full_name}")
 
+    if path.exists() is False:
+        path.mkdir(parents=True)
+
     vise_yaml = (path / "vise.yaml")
     if vise_yaml.exists() is False:
         vise_yaml.write_text("""task: defect
 user_incar_settings:
   NSW: 1""")
 
-    if path.exists() is False:
-        path.mkdir(parents=True)
 
     json_file = path / "dephon_init.json"
     if json_file.exists():
@@ -354,11 +357,13 @@ def make_capture_rate(args: Namespace):
     f_deg = f_min_info.degeneracy_by_symmetry_reduction
 
     phonon_overlaps = calc_phonon_overlaps(i_ccd, f_ccd, args.temperatures)
-
+    em = dephon_init.effective_mass(carrier)
+    velocities = thermal_velocity(np.array(args.temperatures), em)
     spin_factor = 0.5 if i_min_info.is_spin_polarized else 1.0
 
     cap_rate = CaptureRate(Wif=e_p_matrix_elem.e_p_matrix_element(),
                            summed_phonon_overlaps=phonon_overlaps,
+                           velocities=velocities,
                            temperatures=args.temperatures,
                            site_degeneracy=f_deg / i_deg,
                            spin_selection_factor=spin_factor,
