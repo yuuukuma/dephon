@@ -176,7 +176,6 @@ class DephonInit(MSONable, ToJsonFileMixIn):
     def band_gap(self):
         return self.cbm - self.vbm
 
-
     def min_info_from_charge(self, charge: int):
         for state in self.min_points:
             if state.charge == charge:
@@ -255,6 +254,7 @@ class DephonInit(MSONable, ToJsonFileMixIn):
                 result.append(f"-- CBM spin-{spin}")
                 for c in cb:
                     result.append(str(c))
+            result.append(f"-- parse dir: {min_info.parsed_dir}")
             result.append(f"")
 
         return "\n".join(result)
