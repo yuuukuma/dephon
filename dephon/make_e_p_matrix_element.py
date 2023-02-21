@@ -49,7 +49,7 @@ class MakeEPMatrixElement:
         self.dQ_wswq_pairs = dQ_wswq_pairs
 
     def make(self):
-        inner_prods = {dQ: self._add_inner_products(wswq)
+        inner_prods = {dQ: self._add_inner_products(wswq, dQ)
                        for dQ, wswq in self.dQ_wswq_pairs}
         return EPMatrixElement(charge=self.charge,
                                base_disp_ratio=self.base_disp_ratio,
@@ -61,7 +61,7 @@ class MakeEPMatrixElement:
                                kpt_idx=self.kpt_index,
                                inner_products=inner_prods)
 
-    def _add_inner_products(self, wswq: wswq_type):
+    def _add_inner_products(self, wswq: wswq_type, dQ: float):
         """    Returns
         -------
         dict(dict)
@@ -69,7 +69,7 @@ class MakeEPMatrixElement:
             as indices and maps it to a complex number"""
         spin_kpt_pair = (spin_to_idx(self.spin, True), self.kpt_index)
         band_indices = (self.band_edge_index, self.defect_band_index)
-        braket = np.abs(wswq[spin_kpt_pair][tuple(band_indices)])
+        braket = np.abs(wswq[spin_kpt_pair][tuple(band_indices)]) * np.sign(dQ)
         return InnerProduct(abs_inner_product=braket)
 
 
