@@ -9,6 +9,7 @@ from dephon.capture_rate import CaptureRate
 def capture_rate():
     return CaptureRate(Wif=1.23456,
                        summed_phonon_overlaps=[0.1234, 1.1234, 2.1234],
+                       velocities=[10.001, 10.0, 10.0],
                        temperatures=[100.01234, 200, 300],
                        site_degeneracy=4.0,
                        spin_selection_factor=0.5,

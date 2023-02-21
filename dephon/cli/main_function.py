@@ -322,7 +322,6 @@ def make_e_p_matrix_element(args: Namespace):
     make_e_p_matrix_elem = MakeEPMatrixElement(
         base_disp_ratio=args.base_disp,
         single_ccd=args.single_ccd,
-        captured_carrier=args.captured_carrier,
         band_edge_index=args.band_edge_index,
         defect_band_index=args.defect_band_index,
         kpoint_index=args.kpoint_index,
@@ -346,8 +345,7 @@ def make_capture_rate(args: Namespace):
     if e_p_matrix_elem.e_p_matrix_element is None:
         raise ValueError
 
-    carrier = args.e_p_matrix_elem.captured_carrier
-    f_ccd, i_ccd = args.ccd.initial_and_final_ccd_from_captured_carrier(carrier)
+    f_ccd, i_ccd = args.ccd.initial_and_final_ccd_from_captured_carrier(args.captured_carrier)
     print(i_ccd)
     print(f_ccd)
 
@@ -357,7 +355,7 @@ def make_capture_rate(args: Namespace):
     f_deg = f_min_info.degeneracy_by_symmetry_reduction
 
     phonon_overlaps = calc_phonon_overlaps(i_ccd, f_ccd, args.temperatures)
-    em = dephon_init.effective_mass(carrier)
+    em = dephon_init.effective_mass(args.captured_carrier)
     velocities = thermal_velocity(np.array(args.temperatures), em)
     spin_factor = 0.5 if i_min_info.is_spin_polarized else 1.0
 

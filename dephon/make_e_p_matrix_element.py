@@ -8,7 +8,6 @@ from vise.util.logger import get_logger
 
 from dephon.config_coord import SingleCcd
 from dephon.ele_phon_coupling import EPMatrixElement, InnerProduct
-from dephon.enum import Carrier
 from dephon.util import spin_to_idx
 
 logger = get_logger(__name__)
@@ -21,7 +20,6 @@ class MakeEPMatrixElement:
     def __init__(self,
                  base_disp_ratio: float,
                  single_ccd: SingleCcd,
-                 captured_carrier: Carrier,
                  band_edge_index: int,
                  defect_band_index: int,
                  kpoint_index: int,
@@ -30,19 +28,14 @@ class MakeEPMatrixElement:
                  ):
         self.charge = single_ccd.charge
         self.base_disp_ratio = base_disp_ratio
-        self.captured_carrier = captured_carrier
         self.band_edge_index = band_edge_index
         self.defect_band_index = defect_band_index
 
         single_point_info = single_ccd.disp_point_info(base_disp_ratio)
-        band_edge_state = single_point_info.band_edge_state(
-            captured_carrier, spin, band_edge_index)
+        band_edge_state = single_point_info.band_edge_state(spin, band_edge_index)
         defect_state = single_point_info.localized_orbital(
             spin, defect_band_index)
-        self.energy_diff = band_edge_state.eigenvalue - defect_state.ave_energy
-
-        if captured_carrier is Carrier.h:
-            self.energy_diff *= -1
+        self.energy_diff = abs(band_edge_state.eigenvalue - defect_state.ave_energy)
 
         self.spin = spin
         self.kpt_index = kpoint_index
@@ -53,7 +46,6 @@ class MakeEPMatrixElement:
                        for dQ, wswq in self.dQ_wswq_pairs}
         return EPMatrixElement(charge=self.charge,
                                base_disp_ratio=self.base_disp_ratio,
-                               captured_carrier=self.captured_carrier,
                                band_edge_index=self.band_edge_index,
                                defect_band_index=self.defect_band_index,
                                spin=self.spin,

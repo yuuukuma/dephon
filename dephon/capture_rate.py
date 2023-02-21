@@ -36,13 +36,12 @@ class CaptureRate(MSONable, ToJsonFileMixIn):
         result = [tabulate(header, tablefmt="plain")]
 
         table = []
-        columns = ["T [K]", "Phonon overlap []", "C [cm3/s]", "v [cm2/s]",
-                   " [cm2]"],
+        columns = ["T [K]", "Phonon overlap []", "C [cm3/s]", "v [cm2/s]", "c / v [cm2]"]
         for T, phonon_overlap, rate, v in zip(self.temperatures,
                                               self.summed_phonon_overlaps,
                                               self.capture_rate,
                                               self.velocities):
-            table.append([T, phonon_overlap, rate, v, phonon_overlap / v])
+            table.append([T, phonon_overlap, rate, v, rate / v])
 
         result.append(
             tabulate(table, headers=columns, tablefmt="plain",
@@ -56,9 +55,13 @@ def calc_phonon_overlaps(ground_ccd: SingleCcd,
                          T: List[float]):
     dQ = excited_ccd.ground_point_info.dQ - ground_ccd.ground_point_info.dQ
 
-    dE = (excited_ccd.ground_point_info.corrected_energy
-          - ground_ccd.ground_point_info.corrected_energy)
+    print(excited_ccd)
+    print(ground_ccd)
 
+    dE = (excited_ccd.ground_point_info.relative_energy
+          - ground_ccd.ground_point_info.relative_energy)
+
+    print(abs(dQ), dE)
     # at Wif=1, volume=1Å^3, g=1
     result = get_C(dQ=abs(dQ),
                    dE=dE,

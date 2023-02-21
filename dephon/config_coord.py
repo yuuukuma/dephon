@@ -51,15 +51,13 @@ class SinglePointInfo(MSONable, ToJsonFileMixIn):
     base_energy: float = 0.0  # This must be same in the same (Single)Ccd class
 
     def band_edge_state(self,
-                        capped_carrier: Carrier,
                         spin: Spin,
                         band_edge_index: int) -> BandEdgeState:
-        bands = self.conduction_bands \
-            if capped_carrier is Carrier.e else self.valence_bands
-        idx = 0 if len(bands) == 1 else spin_to_idx(spin)
-        for band in bands[idx]:
+        idx = spin_to_idx(spin)
+        for band in (self.valence_bands[idx] + self.conduction_bands[idx] + self.localized_orbitals[idx]):
             if band.band_index == band_edge_index:
                 return band
+
         raise ValueError
 
     def localized_orbital(self,

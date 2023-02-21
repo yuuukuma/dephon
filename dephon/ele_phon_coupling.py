@@ -9,7 +9,6 @@ from pymatgen.electronic_structure.core import Spin
 from tabulate import tabulate
 from vise.util.mix_in import ToJsonFileMixIn
 
-from dephon.enum import Carrier
 from dephon.util import spin_to_idx
 
 
@@ -38,7 +37,6 @@ class EPMatrixElement(MSONable, ToJsonFileMixIn):
     """
     charge: int
     base_disp_ratio: float
-    captured_carrier: Carrier
     band_edge_index: int
     defect_band_index: int
     spin: Union[Spin, str]

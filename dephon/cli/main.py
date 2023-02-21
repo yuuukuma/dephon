@@ -220,8 +220,6 @@ def parse_args_main(args):
         "--single_ccd", type=loadfn, required=True,
         help="single_ccd.json filename.")
     parser_make_e_p_matrix_element.add_argument(
-        "--captured_carrier", type=Carrier)
-    parser_make_e_p_matrix_element.add_argument(
         "--band_edge_index", type=int, required=True)
     parser_make_e_p_matrix_element.add_argument(
         "--defect_band_index", type=int, required=True)
@@ -242,6 +240,8 @@ def parse_args_main(args):
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
         aliases=['mcr'])
 
+    parser_make_capture_rate.add_argument(
+        "--captured_carrier", type=Carrier)
     parser_make_capture_rate.add_argument(
         "--e_p_matrix_elem", type=loadfn, required=True)
     parser_make_capture_rate.add_argument(
