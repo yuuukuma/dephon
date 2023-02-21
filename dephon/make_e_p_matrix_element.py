@@ -25,6 +25,7 @@ class MakeEPMatrixElement:
                  kpoint_index: int,
                  spin: Spin,
                  dQ_wswq_pairs: List[Tuple[float, wswq_type]],
+                 energy_diff: float = None
                  ):
         self.charge = single_ccd.charge
         self.base_disp_ratio = base_disp_ratio
@@ -32,10 +33,12 @@ class MakeEPMatrixElement:
         self.defect_band_index = defect_band_index
 
         single_point_info = single_ccd.disp_point_info(base_disp_ratio)
-        band_edge_state = single_point_info.band_edge_state(spin, band_edge_index)
-        defect_state = single_point_info.localized_orbital(
-            spin, defect_band_index)
-        self.energy_diff = abs(band_edge_state.eigenvalue - defect_state.ave_energy)
+        if energy_diff:
+            self.energy_diff = energy_diff
+        else:
+            band_edge_state = single_point_info.band_edge_state(spin, band_edge_index)
+            defect_state = single_point_info.localized_orbital(spin, defect_band_index)
+            self.energy_diff = abs(band_edge_state.eigenvalue - defect_state.ave_energy)
 
         self.spin = spin
         self.kpt_index = kpoint_index

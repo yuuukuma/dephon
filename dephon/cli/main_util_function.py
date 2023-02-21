@@ -6,4 +6,5 @@ from dephon.util import reduce_wswq
 
 def reduce_wswq_auto(args):
     min_info = args.dephon_init.min_info_from_charge(args.single_ccd.charge)
-    reduce_wswq(args.wswq, min_info.relevant_band_indices)
+    band_indices = args.band_indices or min_info.relevant_band_indices
+    reduce_wswq(args.wswq, band_indices)

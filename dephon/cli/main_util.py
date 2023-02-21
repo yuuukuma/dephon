@@ -14,8 +14,8 @@ from dephon.version import __version__
 warnings.simplefilter('ignore', UnknownPotcarWarning)
 
 
-description = """Helper package to calculate carrier capture rates trapped by
-point defects."""
+description = """Helper package for calculating the non-radiative carrier 
+capture rates trapped by point defects."""
 
 epilog = f"Author: Yu Kumagai Version: {__version__}"
 
@@ -46,6 +46,9 @@ def parse_args_main(args):
         help="single_ccd.json file.")
     parser_reduce_wswq_auto.add_argument(
         "-w", "--wswq", type=Path, required=True,
+        help="")
+    parser_reduce_wswq_auto.add_argument(
+        "-b", "--band_indices", type=float, nargs="+",
         help="")
 
     parser_reduce_wswq_auto.set_defaults(func=reduce_wswq_auto)

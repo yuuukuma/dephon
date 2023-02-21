@@ -326,7 +326,8 @@ def make_e_p_matrix_element(args: Namespace):
         defect_band_index=args.defect_band_index,
         kpoint_index=args.kpoint_index,
         spin=args.spin,
-        dQ_wswq_pairs=dQ_wswq_pairs)
+        dQ_wswq_pairs=dQ_wswq_pairs,
+        energy_diff=args.energy_diff)
     e_p_matrix_elem = make_e_p_matrix_elem.make()
     print(e_p_matrix_elem)
     e_p_matrix_elem.to_json_file()

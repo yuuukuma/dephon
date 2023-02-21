@@ -19,9 +19,8 @@ from dephon.version import __version__
 
 warnings.simplefilter('ignore', UnknownPotcarWarning)
 
-
-description = """Helper package to calculate carrier capture rates trapped by
-point defects."""
+description = """Helper package for calculating the non-radiative carrier 
+capture rates trapped by point defects."""
 
 epilog = f"Author: Yu Kumagai Version: {__version__}"
 
@@ -220,13 +219,15 @@ def parse_args_main(args):
         "--single_ccd", type=loadfn, required=True,
         help="single_ccd.json filename.")
     parser_make_e_p_matrix_element.add_argument(
-        "--band_edge_index", type=int, required=True)
+        "--band_edge_index", type=int)
     parser_make_e_p_matrix_element.add_argument(
-        "--defect_band_index", type=int, required=True)
+        "--defect_band_index", type=int)
     parser_make_e_p_matrix_element.add_argument(
         "--kpoint_index", type=int, required=True)
     parser_make_e_p_matrix_element.add_argument(
         "--spin", type=Spin.__getattr__, required=True)
+    parser_make_e_p_matrix_element.add_argument(
+        "--energy_diff", type=float)
     parser_make_e_p_matrix_element.add_argument(
         "--dirs", type=Path, nargs="+", required=True)
 
