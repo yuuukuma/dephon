@@ -128,7 +128,10 @@ class MinimumPointInfo(MSONable):
         def add(bands):
             for i in bands:
                 for j in i:
-                    result.add(j.band_index)
+                    try:
+                        result.add(j.band_index)
+                    except AttributeError:
+                        result.add(j.band_idx)
 
         add(self.valence_bands)
         add(self.localized_orbitals)
