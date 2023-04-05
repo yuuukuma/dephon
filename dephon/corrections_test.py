@@ -9,7 +9,12 @@ from dephon.enum import CorrectionType
 
 @pytest.fixture
 def dephon_correction():
-    return DephonCorrection(energy=1.0, correction_type=CorrectionType.extended_FNV)
+    return DephonCorrection(corrections={CorrectionType.extended_FNV: 1.0,
+                                         CorrectionType.kumagai2023: 2.0})
+
+
+def test_correction_energy(dephon_correction):
+    assert dephon_correction.total_correction_energy == 3.0
 
 
 def test_correction_msonable(dephon_correction):
@@ -17,8 +22,8 @@ def test_correction_msonable(dephon_correction):
 
 
 def test_correction_yaml_round_trip(dephon_correction, tmpdir):
-    expected_str = f"""correction_type: extended FNV
-energy: 1.0
+    expected_str = f"""extended FNV: 1.0
+kumagai2023: 2.0
 """
     assert_yaml_roundtrip(dephon_correction, tmpdir, expected_str)
 

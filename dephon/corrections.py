@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 #  Copyright (c) 2022 Kumagai group.
 from dataclasses import dataclass
+from typing import Dict
 
 import yaml
 from monty.json import MSONable
@@ -11,16 +12,21 @@ from dephon.enum import CorrectionType
 
 @dataclass
 class DephonCorrection(MSONable, ToYamlFileMixIn):
-    energy: float
-    correction_type: CorrectionType
+    corrections: Dict[CorrectionType, float]
+
+    @property
+    def total_correction_energy(self):
+        return sum([v for v in self.corrections.values()])
 
     def to_yaml(self):
-        return yaml.dump({"energy": self.energy,
-                          "correction_type": str(self.correction_type)})
+        return yaml.dump({str(k): v for k, v in self.corrections.items()})
 
     @classmethod
     def from_yaml(cls, filename: str):
         with open(filename) as file:
             d = yaml.safe_load(file)
-        type_ = CorrectionType.from_string(d["correction_type"])
-        return cls(energy=d["energy"], correction_type=type_)
+        dd = {}
+        for k, v in d.items():
+            dd[CorrectionType.from_string(k)] = v
+        return cls(dd)
+
