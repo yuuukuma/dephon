@@ -13,7 +13,8 @@ from pymatgen.io.vasp.inputs import UnknownPotcarWarning
 from dephon.cli.main_function import make_dephon_init, make_ccd, \
     make_ccd_dirs, plot_ccd, plot_eigenvalues, set_quadratic_fitting_q_range, \
     make_wswq_dirs, update_single_point_infos, add_point_infos_to_single_ccd, \
-    make_e_p_matrix_element, make_capture_rate
+    make_e_p_matrix_element, make_capture_rate, plot_capture_rate, \
+    make_ccd_correction
 from dephon.enum import Carrier
 from dephon.version import __version__
 
@@ -102,7 +103,7 @@ def parse_args_main(args):
         func=update_single_point_infos)
 
     # -- add_point_infos_to_single_ccd -----------------------------------
-    parser_make_single_ccd = subparsers.add_parser(
+    parser_add_point_infos_to_single_ccd = subparsers.add_parser(
         name="add_point_infos_to_single_ccd",
         description="Make single_point_info.json at each directory. "
                     "Before running this command, calc_results.json and "
@@ -112,7 +113,8 @@ def parse_args_main(args):
         parents=[dirs],
         aliases=['apsc'])
 
-    parser_make_single_ccd.set_defaults(func=add_point_infos_to_single_ccd)
+    parser_add_point_infos_to_single_ccd.set_defaults(
+        func=add_point_infos_to_single_ccd)
 
     # -- make_ccd -----------------------------------
     parser_make_ccd = subparsers.add_parser(
@@ -129,6 +131,28 @@ def parse_args_main(args):
         "-e", "--excited_ccd", type=loadfn,
         help="single_ccd.json file corresponding to an excited state.")
     parser_make_ccd.set_defaults(func=make_ccd)
+
+    # -- make_ccd_correction -----------------------------------
+    parser_make_ccd_correction = subparsers.add_parser(
+        name="make_ccd_correction",
+        description="Make ccd_correction.json and modify "
+                    "dephon_correction.yaml",
+        parents=[dirs, unitcell_parser],
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+        aliases=['mcc'])
+
+    parser_make_ccd_correction.add_argument(
+        "-s", "--single_ccd", type=loadfn,
+        help="single_ccd.json file.")
+    parser_make_ccd_correction.add_argument(
+        "--to_charge", type=int)
+    parser_make_ccd_correction.add_argument(
+        "-ndcr", "--no_disp_calc_results", required=True, type=loadfn,
+        help="Path to the calc_results.json without displacement.")
+    parser_make_ccd_correction.add_argument(
+        "-ndde", "--no_disp_defect_entry", required=True, type=loadfn,
+        help="Path to the defect_entry.json without displacement.")
+    parser_make_ccd_correction.set_defaults(func=make_ccd_correction)
 
     # -- set_fitting_q_range -----------------------------------
     parser_set_fitting_q_range = subparsers.add_parser(
@@ -158,6 +182,10 @@ def parse_args_main(args):
         "--fig_name", type=str, default="ccd.pdf")
     parser_plot_ccd.add_argument(
         "--q_range", type=float, nargs="+")
+    parser_plot_ccd.add_argument(
+        "--no_quadratic_fit",  dest="quadratic_fit",  action="store_false")
+    parser_plot_ccd.add_argument(
+        "--no_spline_fit",  dest="spline_fit",  action="store_false")
 
     parser_plot_ccd.set_defaults(func=plot_ccd)
 
@@ -170,6 +198,9 @@ def parse_args_main(args):
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
         aliases=['pe'])
 
+    parser_plot_eigenvalues.add_argument(
+        "-y", "--y_range", nargs=2, type=float, default=None,
+        help="Energy range in y-axis")
     parser_plot_eigenvalues.set_defaults(func=plot_eigenvalues)
 
     # # -- make_initial_e_p_coupling -----------------------------------
@@ -250,6 +281,18 @@ def parse_args_main(args):
         default=[t for t in range(40, 820, 20)])
 
     parser_make_capture_rate.set_defaults(func=make_capture_rate)
+
+    # -- plot_capture_rate -----------------------------------
+    parser_plot_capture_rate = subparsers.add_parser(
+        name="plot_capture_rate",
+        description="Plot capture rate",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+        aliases=['pcr'])
+    parser_plot_capture_rate.add_argument(
+        "--capture_rate", type=loadfn, default="capture_rate.json",
+        help="capture_rate.json filename.")
+
+    parser_plot_capture_rate.set_defaults(func=plot_capture_rate)
     # ------------------------------------------------------------------------
     return parser.parse_args(args)
 

@@ -20,6 +20,8 @@ from pydefect.analyzer.defect_structure_info import DefectStructureInfo
 from pydefect.analyzer.unitcell import Unitcell
 from pydefect.cli.main_functions import get_calc_results
 from pydefect.cli.main_tools import parse_dirs
+from pydefect.cli.vasp.make_efnv_correction import make_efnv_correction
+from pydefect.corrections.site_potential_plotter import SitePotentialMplPlotter
 from pymatgen.electronic_structure.core import Spin
 from vise.input_set.incar import ViseIncar
 from vise.input_set.prior_info import PriorInfo
@@ -199,11 +201,46 @@ def _make_ccd_dir(charge, dirname, ratio, structure, dQ, correction):
         single_point_info = SinglePointInfo(dQ=dQ, disp_ratio=ratio)
         single_point_info.to_json_file(dir_ / "single_point_info.json")
 
-        correction = DephonCorrection(correction, CorrectionType.extended_FNV)
+        correction = DephonCorrection({CorrectionType.extended_FNV: correction})
         correction.to_yaml_file(dir_ / "dephon_correction.yaml")
 
     except FileExistsError:
         logger.info(f"Directory {dir_} exists, so skip it.")
+
+
+def make_ccd_correction(args):
+    file_name = "ccd_correction.json"
+
+    def _inner(dir_: Path):
+        single_point_info: SinglePointInfo \
+            = loadfn(dir_ / "single_point_info.json")
+
+        if single_point_info.disp_ratio == 0.0:
+            return
+
+        calc_results = get_calc_results(dir_, False)
+        minus_charge_diff = args.single_ccd.charge - args.to_charge
+        effective_charge = single_point_info.disp_ratio * minus_charge_diff
+
+        efnv = make_efnv_correction(effective_charge,
+                                    calc_results,
+                                    args.no_disp_calc_results,
+                                    args.unitcell.effective_ionic_diele_const,
+                                    args.no_disp_defect_entry.defect_center)
+        efnv.to_json_file(dir_ / file_name)
+
+        title = args.single_ccd.name
+        plotter = SitePotentialMplPlotter.from_efnv_corr(
+            title=title, efnv_correction=efnv)
+        plotter.construct_plot()
+        plotter.plt.savefig(fname=dir_ / "ccd_correction.pdf")
+        plotter.plt.clf()
+
+        correction = DephonCorrection.from_yaml(dir_ / "dephon_correction.yaml")
+        correction.corrections[
+            str(CorrectionType.kumagai2023)] = efnv.correction_energy
+
+    parse_dirs(args.dirs, _inner, output_filename=file_name)
 
 
 def update_single_point_infos(args: Namespace):
@@ -211,19 +248,19 @@ def update_single_point_infos(args: Namespace):
         calc_results = get_calc_results(dir_, False)
         band_edge_states: BandEdgeStates = loadfn(dir_ / "band_edge_states.json")
         band_edge_orbital_infos: BandEdgeOrbitalInfos = loadfn(dir_ / "band_edge_orbital_infos.json")
+
         correction = DephonCorrection.from_yaml(dir_ / "dephon_correction.yaml")
 
         localized_orbitals, valence_bands, conduction_bands = get_orbs(
             band_edge_orbital_infos, band_edge_states)
 
         sp_info: SinglePointInfo = loadfn(dir_ / "single_point_info.json")
-        sp_info.corrected_energy = calc_results.energy + correction.energy
+        sp_info.corrected_energy = calc_results.energy + correction.total_correction_energy
         sp_info.magnetization = calc_results.magnetization
         sp_info.localized_orbitals = localized_orbitals
         sp_info.valence_bands = valence_bands
         sp_info.conduction_bands = conduction_bands
         sp_info.is_shallow = band_edge_states.is_shallow
-        sp_info.correction_method = correction.correction_type
         sp_info.to_json_file(dir_ / "single_point_info.json")
 
     parse_dirs(args.dirs, _inner, verbose=True)
@@ -252,7 +289,9 @@ def set_quadratic_fitting_q_range(args: Namespace):
 
 
 def plot_ccd(args: Namespace):
-    plotter = CcdPlotter(args.ccd, q_range=args.q_range)
+    plotter = CcdPlotter(args.ccd, q_range=args.q_range,
+                         quadratic_fit=args.quadratic_fit,
+                         spline_fit=args.spline_fit)
     plotter.construct_plot()
     plotter.plt.savefig(args.fig_name)
     plotter.plt.show()
@@ -276,7 +315,8 @@ def plot_eigenvalues(args: Namespace):
         disp_ratios.append(single_point_info.disp_ratio)
 
     vbm, cbm = args.dephon_init.supercell_vbm, args.dephon_init.supercell_cbm
-    eigval_plotter = DephonEigenvaluePlotter(orb_infos, disp_ratios, vbm, cbm)
+    eigval_plotter = DephonEigenvaluePlotter(orb_infos, disp_ratios, vbm, cbm,
+                                             y_range=args.y_range)
     eigval_plotter.construct_plot()
     eigval_plotter.plt.savefig("dephon_eigenvalues.pdf")
     eigval_plotter.plt.show()
@@ -334,8 +374,9 @@ def make_e_p_matrix_element(args: Namespace):
 
     try:
         e_p_matrix_elem.e_p_matrix_element(plt.gca())
-        plt.show()
+        plt.xlabel("dQ (amu$^{1/2}$Å)")
         plt.savefig(f"e_p_matrix_element_{e_p_matrix_elem.index_info}.pdf")
+        plt.show()
     except (TypeError, LinAlgError):
         logger.info("e-ph matrix element cannot be calculated.")
 
@@ -369,3 +410,11 @@ def make_capture_rate(args: Namespace):
                            volume=dephon_init.volume)
     print(cap_rate)
     cap_rate.to_json_file()
+
+
+def plot_capture_rate(args: Namespace):
+    cap: CaptureRate = args.capture_rate
+    plt.scatter(cap.temperatures, cap.capture_rate, marker='o')
+    plt.gca().set_yscale("log")
+    plt.savefig("capture_rate.pdf")
+    plt.show()

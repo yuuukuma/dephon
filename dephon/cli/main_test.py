@@ -11,7 +11,6 @@ from dephon.cli.main_function import update_single_point_infos, make_ccd, \
     plot_eigenvalues, add_point_infos_to_single_ccd
 from dephon.config_coord import Ccd, SingleCcd
 from dephon.dephon_init import DephonInit
-from dephon.enum import Carrier
 
 
 def loadfn_effect(d: dict):
@@ -59,8 +58,8 @@ def test_main_make_dirs(mocker):
     parsed_args = parse_args_main(["mcd"])
     expected = Namespace(
         dephon_init=mock_dephon_init,
-        first_to_second_div_ratios=[-0.2, 0.0, 0.2, 0.4, 0.6, 0.8],
-        second_to_first_div_ratios=[-0.2, 0.0, 0.2, 0.4, 0.6, 0.8],
+        first_to_second_div_ratios=[-0.2, 0.0, 0.2, 0.4, 0.6, 0.8, 1.0],
+        second_to_first_div_ratios=[-0.2, 0.0, 0.2, 0.4, 0.6, 0.8, 1.0],
         calc_dir=Path.cwd(),
         func=parsed_args.func)
     assert parsed_args == expected
@@ -76,14 +75,14 @@ def test_main_make_dirs(mocker):
     assert parsed_args == expected
 
 
-def test_main_make_single_point_infos():
-    parsed_args = parse_args_main(["mspi", "-d", "disp_0.0"])
+def test_main_update_single_point_infos():
+    parsed_args = parse_args_main(["uspi", "-d", "disp_0.0"])
     expected = Namespace(dirs=[Path("disp_0.0")], func=update_single_point_infos)
     assert parsed_args == expected
 
 
-def test_main_make_single_ccd():
-    parsed_args = parse_args_main(["msc", "-d", "disp_0.0"])
+def test_main_add_point_infos_to_single_ccd():
+    parsed_args = parse_args_main(["apsc", "-d", "disp_0.0"])
     expected = Namespace(dirs=[Path("disp_0.0")], func=add_point_infos_to_single_ccd)
     assert parsed_args == expected
 
@@ -135,6 +134,8 @@ def test_main_plot_ccd_wo_args(mocker):
         ccd=mock_ccd,
         fig_name="ccd.pdf",
         q_range=None,
+        quadratic_fit=True,
+        spline_fit=True,
         func=parsed_args.func)
     assert parsed_args == expected
 
@@ -148,26 +149,27 @@ def test_main_plot_eigenvalues(mocker):
     expected = Namespace(
         dirs=[Path("disp_0.0")],
         dephon_init=mock_dephon_init,
+        y_range=None,
         func=plot_eigenvalues)
     assert parsed_args == expected
 
 
-def test_make_make_initial_e_p_coupling(mocker):
-    mock_dephon_init = mocker.Mock(spec=DephonInit, autospec=True)
-    mock_ccd = mocker.Mock(spec=Ccd, autospec=True)
-    mocker.patch(
-        "dephon.cli.main.loadfn",
-        side_effect=loadfn_effect({"dephon_init.json": mock_dephon_init,
-                                   "ccd.json": mock_ccd}))
-
-    parsed_args = parse_args_main(["miepc",
-                                   "-cc", "h",
-                                   "--charge_for_e_p_coupling", "1"])
-    expected = Namespace(
-        dephon_init=mock_dephon_init,
-        ccd=mock_ccd,
-        captured_carrier=Carrier.h,
-        charge_for_e_p_coupling=1,
-        func=make_initial_e_p_coupling)
-    assert parsed_args == expected
+# def test_make_make_initial_e_p_coupling(mocker):
+#     mock_dephon_init = mocker.Mock(spec=DephonInit, autospec=True)
+#     mock_ccd = mocker.Mock(spec=Ccd, autospec=True)
+#     mocker.patch(
+#         "dephon.cli.main.loadfn",
+#         side_effect=loadfn_effect({"dephon_init.json": mock_dephon_init,
+#                                    "ccd.json": mock_ccd}))
+#
+#     parsed_args = parse_args_main(["miepc",
+#                                    "-cc", "h",
+#                                    "--charge_for_e_p_coupling", "1"])
+#     expected = Namespace(
+#         dephon_init=mock_dephon_init,
+#         ccd=mock_ccd,
+#         captured_carrier=Carrier.h,
+#         charge_for_e_p_coupling=1,
+#         func=make_initial_e_p_coupling)
+#     assert parsed_args == expected
 

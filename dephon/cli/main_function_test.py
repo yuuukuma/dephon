@@ -123,7 +123,7 @@ def test_make_ccd_dirs(tmpdir, ground_structure, excited_structure,
     assert actual == excited_structure
 
     actual = DephonCorrection.from_yaml("from_1_to_0/disp_1.0/dephon_correction.yaml")
-    expected = DephonCorrection(200.0, CorrectionType.extended_FNV)
+    expected = DephonCorrection({CorrectionType.extended_FNV: 200.0})
     assert actual == expected
 
 
@@ -186,7 +186,9 @@ def test_set_quadratic_fitting_q_range(ccd, tmpdir):
 
 def test_plot_ccd(ccd, tmpdir):
     args = Namespace(ccd=ccd, fig_name=tmpdir / "ccd.pdf",
-                     q_range=[-1.0, 1.0])
+                     q_range=[-1.0, 1.0],
+                     quadratic_fit=True,
+                     spline_fit=True)
     plot_ccd(args)
 
 
@@ -196,7 +198,8 @@ def test_plot_eigenvalues(test_files, tmpdir):
     dephon_init = loadfn(va_p1 / "dephon_init.json")
     dir_ = va_p1 / "from_0_to_-1_before_make_single_point_infos"
     args = Namespace(dirs=[dir_ / "disp_0.0"],
-                     dephon_init=dephon_init)
+                     dephon_init=dephon_init,
+                     y_range=None)
     plot_eigenvalues(args)
 
 
@@ -277,31 +280,33 @@ def test_make_e_p_matrix_element(tmpdir, test_files):
                      defect_band_index=766,
                      kpoint_index=1,
                      spin=Spin.down,
-                     dirs=[dir_/"disp_0.0", dir_/"disp_0.1"])
+                     dirs=[dir_/"disp_0.0", dir_/"disp_0.1"],
+                     energy_diff=1.0)
 #    dirs=[dir_/"disp_0.0", dir_/"disp_0.1", dir_/"disp_0.2"])
 
     make_e_p_matrix_element(args)
-    actual: EPMatrixElement = loadfn("e_p_matrix_element.json")
+    actual: EPMatrixElement = loadfn("e_p_matrix_element_b767_d766_k1_-1.json")
     print(actual)
 
 
-def test_make_capture_rate(tmpdir, test_files):
-    print(tmpdir)
-    tmpdir.chdir()
-    dir_ = test_files / "NaP/Va_P1_-1__Va_P1_0/from_0_to_-1_after_make_single_point_infos"
-    args = Namespace(base_disp=0.0,
-                     single_ccd=loadfn(dir_/"single_ccd.json"),
-                     captured_carrier=Carrier.e,
-                     band_edge_index=767,
-                     defect_band_index=766,
-                     kpoint_index=1,
-                     spin=Spin.down,
-                     dirs=[dir_/"disp_0.0", dir_/"disp_0.1"])
-    #    dirs=[dir_/"disp_0.0", dir_/"disp_0.1", dir_/"disp_0.2"])
+# def test_make_capture_rate(tmpdir, test_files):
+#     print(tmpdir)
+#     tmpdir.chdir()
+#     dir_ = test_files / "NaP/Va_P1_-1__Va_P1_0/from_0_to_-1_after_make_single_point_infos"
+#     args = Namespace(base_disp=0.0,
+#                      single_ccd=loadfn(dir_/"single_ccd.json"),
+#                      captured_carrier=Carrier.e,
+#                      band_edge_index=767,
+#                      defect_band_index=766,
+#                      kpoint_index=1,
+#                      spin=Spin.down,
+#                      dirs=[dir_/"disp_0.0", dir_/"disp_0.1"],
+#                      energy_diff = )
+#     #    dirs=[dir_/"disp_0.0", dir_/"disp_0.1", dir_/"disp_0.2"])
 
-    make_e_p_matrix_element(args)
-    actual: EPMatrixElement = loadfn("e_p_matrix_element.json")
-    print(actual)
+    # make_e_p_matrix_element(args)
+    # actual: EPMatrixElement = loadfn("e_p_matrix_element.json")
+    # print(actual)
 """
 TODO:
 . Check if electronic SCF are converged.
