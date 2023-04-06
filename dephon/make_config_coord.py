@@ -102,6 +102,7 @@ class MakeCcd:
                  ground state ccd.
         """
         try:
+            print(self.orig_excited_ccd)
             result = self.orig_excited_ccd.dQ_reverted_single_ccd()
         except ValueError:
             logger.warning("disp=1.0 is required for excited state.")

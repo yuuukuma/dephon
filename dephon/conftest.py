@@ -155,11 +155,11 @@ def e_p_matrix_elem():
     ip_2 = InnerProduct(abs_inner_product=1.0, used_for_fitting=True)
     ip_3 = InnerProduct(abs_inner_product=2.0, used_for_fitting=True)
 
-    return EPMatrixElement(defect_band_index=2,
+    return EPMatrixElement(charge=1,
+                           defect_band_index=2,
                            spin=Spin.down,
                            eigenvalue_diff=0.1,
                            kpt_idx=1,
-                           kpt_coord=[0.0, 0.0, 0.0],
                            inner_products={-1.0: ip_1, 0.0: ip_2, 1.0: ip_3})
 
 

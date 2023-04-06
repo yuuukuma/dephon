@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #  Copyright (c) 2022 Kumagai group.
-from typing import List
+from typing import List, Optional
 
 from matplotlib import pyplot as plt
 from pydefect.analyzer.band_edge_states import BandEdgeOrbitalInfos
@@ -16,7 +16,9 @@ class DephonEigenvaluePlotter:
                  disp_ratios: List[float],
                  supercell_vbm: float = None,
                  supercell_cbm: float = None,
-                 title: str = None):
+                 title: str = None,
+                 y_range: Optional[List[float]] = None,
+                 ):
         try:
             num_kpt = len(orb_infos[0].kpt_weights)
             assert num_kpt == 1
@@ -41,6 +43,7 @@ class DephonEigenvaluePlotter:
         self.fig, self.axs = self.plt.subplots(1, num_spin)
         if num_spin == 1:
             self.axs = [self.axs]
+        self._y_range = y_range
 
     def construct_plot(self):
         self._add_eigenvalues()
@@ -49,6 +52,9 @@ class DephonEigenvaluePlotter:
         self._set_title()
         self._set_formatter()
         self._set_labels()
+        if self._y_range:
+            print(self._y_range)
+            self._set_y_range()
         self.plt.tight_layout()
 
     def _add_eigenvalues(self):
@@ -76,6 +82,10 @@ class DephonEigenvaluePlotter:
 
     def _set_title(self):
         self.plt.gca().set_title(self._title)
+
+    def _set_y_range(self):
+        for ax in self.axs:
+            ax.set_ylim(self._y_range[0], self._y_range[1])
 
     def _set_formatter(self):
         self.plt.gca().xaxis.set_major_formatter(float_to_int_formatter)

@@ -35,7 +35,7 @@ class Carrier(MSONable, ExtendedEnum):
 
 class CorrectionType(MSONable, ExtendedEnum):
     extended_FNV = "extended FNV"
-    no_correction = "no correction"
+    kumagai2023 = "kumagai2023"
 
 
 class BandEdge(MSONable, ExtendedEnum):

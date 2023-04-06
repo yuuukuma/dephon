@@ -207,6 +207,7 @@ class DephonInit(MSONable, ToJsonFileMixIn):
         result = [f"name: {self.name}"]
         table = [["vbm", self.vbm, "supercell vbm", self.supercell_vbm],
                  ["cbm", self.cbm, "supercell cbm", self.supercell_cbm],
+                 ["volume (Å^3)", self.supercell_volume],
                  ["dQ (amu^0.5 Å)", self.dQ],
                  ["dR (Å)", self.dR],
                  ["M (amu)", self.modal_mass],

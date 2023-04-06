@@ -109,6 +109,7 @@ class SingleCcd(MSONable, ToJsonFileMixIn):
     id_: SingleCcdId
     charge: int
     point_infos: List[SinglePointInfo] = field(default_factory=list)
+    charge_to: Optional[int] = None
 
     def __post_init__(self):
         if self.point_infos:
@@ -172,7 +173,8 @@ class SingleCcd(MSONable, ToJsonFileMixIn):
 
     def omega(self,
               ax: Axes = None,
-              plot_q_range: Optional[List[float]] = None):
+              plot_q_range: Optional[List[float]] = None,
+              color: str = None):
 
         dQs, energies = self.dQs_and_energies(True)
 
@@ -187,32 +189,39 @@ class SingleCcd(MSONable, ToJsonFileMixIn):
 
     def dQ_reverted_single_ccd(self) -> "SingleCcd":
         result = deepcopy(self)
-        disp1_dQ = self.disp_point_info(1.0).dQ
+        for point_info in self.point_infos:
+            if point_info.disp_ratio == 0.0:
+                continue
+            disp1_dQ = point_info.dQ / point_info.disp_ratio
+            break
+
         for i in result.point_infos:
             i.dQ = (1.0 - i.disp_ratio) * disp1_dQ
         result.point_infos.sort(key=lambda x: x.dQ)
         return result
 
-    def add_plot(self, ax, color, q_range):
+    def add_plot(self, ax, color, q_range, quadratic_fit: bool = True, spline_fit: bool = True):
         dQs, energies = self.dQs_and_energies()
         ax.scatter(dQs, energies, marker='o', color=color)
         try:
-            x, y = spline3(dQs, energies, 100, q_range)
-            ax.plot(x, y, label=self.name, color=color)
+            if spline_fit:
+                x, y = spline3(dQs, energies, 100, q_range)
+                ax.plot(x, y, label=self.name, color=color)
         except TypeError as e:
             print(f"{self.name}: {e}")
             pass
 
-        try:
-            self.omega(ax, plot_q_range=q_range)
-        except (ValueError, TypeError) as e:
-            print(f"{self.name}: {e}")
-            pass
+        if quadratic_fit:
+            try:
+                self.omega(ax, plot_q_range=q_range)
+            except (ValueError, TypeError, RuntimeError) as e:
+                print(f"{self.name}: {e}")
+                pass
 
     def __str__(self):
         try:
-            omega = f"{self.omega():.3f}"
-        except ValueError:
+            omega = f"{self.omega():.5f}"
+        except (ValueError, RuntimeError):
             omega = "N.A."
         result = [f"name: {self.name}", f"charge: {self.charge}",
                   f"omega: {omega}"]
@@ -281,7 +290,7 @@ def spline3(xs, ys, num_points, xrange=None):
     #   tck : tuple
     #         (t,c,k) _default_single_ccd_for_e_p_coupling tuple containing the vector of knots, the B-spline
     #         coefficients, and the degree of the spline.
-    tck = interpolate.splprep([xs, ys])[0]
+    tck = interpolate.splprep([xs, ys], k=5)[0]
 
     if xrange:
         x_dist = max(xs) - min(xs)
@@ -299,10 +308,14 @@ class CcdPlotter:
     def __init__(self, ccd: Ccd,
                  title: str = None,
                  set_energy_zero: bool = True,
+                 quadratic_fit: bool = True,
+                 spline_fit: bool = True,
                  q_range: list = None):
         self._title = title or ""
         self._ccd = ccd
         self._set_energy_zero = set_energy_zero
+        self._quadratic_fit = quadratic_fit
+        self._spline_fit = spline_fit
         self.plt = plt
         self._q_range = q_range
 
@@ -317,8 +330,8 @@ class CcdPlotter:
         ax = self.plt.gca()
         if self._q_range:
             ax.set_xlim(self._q_range[0], self._q_range[1])
-        for imag_infos in self._ccd.ccds:
-            imag_infos.add_plot(ax, "black", self._q_range)
+        for imag_infos, color in zip(self._ccd.ccds, ["red", "blue", "green"]):
+            imag_infos.add_plot(ax, color, self._q_range, self._quadratic_fit, self._spline_fit)
 
     def _set_labels(self):
         ax = self.plt.gca()
